@@ -3,14 +3,23 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "node start.js"
+    "build": "node scripts/build-frontend.js",
+    "start": "npm run build && node -e \"process.env.NODE_ENV='production'; require('./start.js')\"",
+    "dev": "node start.js"
   },
   "dependencies": {
-    "cors": "^2.8.6",
+    "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "google-auth-library": "^11.3.1",
     "nodemailer": "^10.0.0",
     "openai": "^7.10.0",
+    "replicate": "^1.4.0",
     "ws": "^8.21.3"
+  },
+  "devDependencies": {
+    "clean-css": "^5.3.3",
+    "html-minifier-terser": "^7.2.0",
+    "javascript-obfuscator": "^5.9.0"
   }
 }

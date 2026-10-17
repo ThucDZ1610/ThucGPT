@@ -124,15 +124,11 @@ window.fetch = async function (resource, options = {}) {
   const url = typeof resource === 'string' ? resource : resource?.url || '';
   if (url.startsWith('/api/')) {
     const creatorCode = isCreatorMode ? (storedCreatorKey || '') : '';
-    const authToken = localStorage.getItem('ai_turbo_auth_token') || '';
     const headers = { ...(options.headers || {}) };
 
     if (creatorCode) {
       headers['X-Creator-Passcode'] = creatorCode;
       headers['X-Bypass-Key'] = creatorCode;
-    }
-    if (authToken && !headers['Authorization']) {
-      headers['Authorization'] = 'Bearer ' + authToken;
     }
     options.headers = headers;
   }
@@ -141,7 +137,6 @@ window.fetch = async function (resource, options = {}) {
 
   // Nếu bị 401 Unauthorized khi đang ở trang chat, chuyển hướng về trang chủ yêu cầu đăng nhập
   if (response.status === 401 && url.startsWith('/api/') && !url.includes('/api/auth/login') && !url.includes('/api/auth/register') && !url.includes('/api/auth/send-otp') && !url.includes('/api/auth/me')) {
-    localStorage.removeItem('ai_turbo_auth_token');
     localStorage.removeItem('ai_turbo_user_data');
     if (window.location.pathname === '/chat' || window.location.pathname.includes('index.html')) {
       window.location.replace('/?require_login=1');
@@ -396,14 +391,10 @@ function getAllSessions() {
 function saveAllSessions(sessions) {
   try {
     const key = getSessionsStorageKey();
-    const uid = getCurrentChatUserId();
     localStorage.setItem(key, JSON.stringify(sessions));
     fetch('/api/chat-history', {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-User-Id': uid,
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessions }),
     }).catch((error) => console.warn('Server history sync failed:', error));
   } catch (e) {
@@ -413,11 +404,7 @@ function saveAllSessions(sessions) {
 
 async function loadSessionsFromServer() {
   try {
-    const uid = getCurrentChatUserId();
-    const response = await fetch(`/api/chat-history?userId=${encodeURIComponent(uid)}`, {
-      cache: 'no-store',
-      headers: { 'X-User-Id': uid }
-    });
+    const response = await fetch('/api/chat-history', { cache: 'no-store' });
     if (!response.ok) return;
     const data = await response.json();
     const serverSessions = Array.isArray(data.sessions) ? data.sessions : [];
@@ -593,11 +580,8 @@ function clearAllSessions() {
     onConfirm: () => {
       localStorage.removeItem(getSessionsStorageKey());
       localStorage.removeItem(getActiveIdStorageKey());
-      const uid = getCurrentChatUserId();
-      fetch(`/api/chat-history?userId=${encodeURIComponent(uid)}`, {
-        method: 'DELETE',
-        headers: { 'X-User-Id': uid }
-      }).catch((error) => console.warn('Server history delete failed:', error));
+      fetch('/api/chat-history', { method: 'DELETE' })
+        .catch((error) => console.warn('Server history delete failed:', error));
       currentSessionId = null;
       renderHistoryList();
       renderWelcomeCard(true);
@@ -1007,9 +991,9 @@ window.openImageLightbox = function (url) {
   }
   lightbox.innerHTML = `
     <div style="position:relative; max-width:92vw; max-height:88vh; display:flex; flex-direction:column; align-items:center;">
-      <img src="${url}" style="max-width:100%; max-height:80vh; border-radius:12px; object-fit:contain; box-shadow:0 0 50px rgba(0,240,255,0.3); border:1px solid rgba(0,240,255,0.4);" />
+      <img src="${escapeHtml(url)}" style="max-width:100%; max-height:80vh; border-radius:12px; object-fit:contain; box-shadow:0 0 50px rgba(0,240,255,0.3); border:1px solid rgba(0,240,255,0.4);" />
       <div style="margin-top:16px; display:flex; gap:12px;" onclick="event.stopPropagation();">
-        <button type="button" onclick="downloadImageFromUrl('${url}', 'image_zoom_${Date.now()}.png')" style="background:rgba(0,240,255,0.2); color:#00f0ff; border:1px solid #00f0ff; padding:8px 18px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">📥 Tải về máy</button>
+        <button type="button" onclick="downloadImageFromUrl(decodeURIComponent('${encodeInlineArgument(url)}'), 'image_zoom_${Date.now()}.png')" style="background:rgba(0,240,255,0.2); color:#00f0ff; border:1px solid #00f0ff; padding:8px 18px; border-radius:8px; cursor:pointer; font-weight:600; font-size:13px;">📥 Tải về máy</button>
         <button type="button" onclick="document.getElementById('aiImageLightbox').style.display='none';" style="background:rgba(255,255,255,0.1); color:#f1f5f9; border:1px solid rgba(255,255,255,0.25); padding:8px 18px; border-radius:8px; cursor:pointer; font-size:13px;">✕ Đóng</button>
       </div>
     </div>
@@ -1109,7 +1093,6 @@ window.triggerGenerateVideo = async function (cardId, encodedPrompt) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('ai_turbo_auth_token') || ''}`,
         'X-Creator-Passcode': localStorage.getItem('ai_turbo_creator_key') || ''
       },
       body: JSON.stringify({ prompt, aspect_ratio: '16:9' })
@@ -1134,7 +1117,7 @@ window.triggerGenerateVideo = async function (cardId, encodedPrompt) {
       playerBox.innerHTML = `
         <div style="padding: 20px; text-align: center; color: #f87171;">
           <p style="margin: 0 0 10px 0; font-weight: 600;">⚠️ ${escapeHtml(errMsg)}</p>
-          <button type="button" class="btn-video-generate-trigger" onclick="triggerGenerateVideo('${cardId}', '${encodeURIComponent(prompt)}')" style="background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.4); padding: 6px 14px; border-radius: 6px; font-size: 12px; cursor: pointer;">
+          <button type="button" class="btn-video-generate-trigger" onclick="triggerGenerateVideo('${cardId}', '${encodeURIComponent(prompt).replace(/'/g, '%27')}')" style="background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.4); padding: 6px 14px; border-radius: 6px; font-size: 12px; cursor: pointer;">
             🔄 Thử Lại
           </button>
         </div>
@@ -1145,7 +1128,7 @@ window.triggerGenerateVideo = async function (cardId, encodedPrompt) {
     playerBox.innerHTML = `
       <div style="padding: 20px; text-align: center; color: #f87171;">
         <p style="margin: 0 0 10px 0; font-weight: 600;">⚠️ Kết nối thất bại: ${escapeHtml(err.message)}</p>
-        <button type="button" class="btn-video-generate-trigger" onclick="triggerGenerateVideo('${cardId}', '${encodeURIComponent(prompt)}')" style="background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.4); padding: 6px 14px; border-radius: 6px; font-size: 12px; cursor: pointer;">
+        <button type="button" class="btn-video-generate-trigger" onclick="triggerGenerateVideo('${cardId}', '${encodeURIComponent(prompt).replace(/'/g, '%27')}')" style="background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.4); padding: 6px 14px; border-radius: 6px; font-size: 12px; cursor: pointer;">
           🔄 Thử Lại
         </button>
       </div>
@@ -1493,6 +1476,16 @@ function escapeHtml(value) {
     .replace(/'/g, '&#039;');
 }
 
+function encodeInlineArgument(value) {
+  return encodeURIComponent(String(value)).replace(/'/g, '%27');
+}
+
+function isSafeImageDataUrl(value) {
+  return typeof value === 'string'
+    && value.length <= 20 * 1024 * 1024
+    && /^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/.test(value);
+}
+
 function formatAssistantMessage(content, allowFileWrite = false) {
   if (!content) return '';
   const codeBlocks = [];
@@ -1519,8 +1512,8 @@ function formatAssistantMessage(content, allowFileWrite = false) {
   // Parse <<<IMAGE_GENERATE:prompt>>> into Cyber Image Showcase Card
   formatted = formatted.replace(/<<<IMAGE_GENERATE:(.+?)>>>/g, (_, rawPrompt) => {
     const cleanPrompt = rawPrompt.trim();
-    const encodedPrompt = encodeURIComponent(cleanPrompt);
-    const imgUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&enhance=true`;
+    const encodedPrompt = encodeURIComponent(cleanPrompt).replace(/'/g, '%27');
+    const imgUrl = `/api/image/proxy?prompt=${encodedPrompt}&width=1024&height=1024`;
     const imageHtml = `
       <div class="cyber-image-card" style="margin: 16px 0; border: 1px solid rgba(0, 240, 255, 0.4); border-radius: 14px; background: rgba(10, 16, 30, 0.9); box-shadow: 0 0 30px rgba(0, 240, 255, 0.2); overflow: hidden;">
         <div style="padding: 10px 16px; background: rgba(0, 240, 255, 0.12); border-bottom: 1px solid rgba(0, 240, 255, 0.25); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
@@ -1572,7 +1565,7 @@ function formatAssistantMessage(content, allowFileWrite = false) {
           <div class="video-loading-indicator" style="padding: 24px; text-align: center;">
             <div style="display: inline-block; width: 36px; height: 36px; border: 3px solid rgba(168, 85, 247, 0.2); border-top-color: #c084fc; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
             <p style="margin-top: 12px; color: #cbd5e1; font-size: 13px; font-weight: 500;">⚡ Đang kết nối Replicate AI để render video...</p>
-            <button type="button" class="btn-video-generate-trigger" onclick="triggerGenerateVideo('${videoCardId}', '${encodeURIComponent(cleanPrompt)}')" style="margin-top: 8px; background: rgba(168, 85, 247, 0.2); color: #e9d5ff; border: 1px solid rgba(168, 85, 247, 0.4); padding: 7px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;">
+            <button type="button" class="btn-video-generate-trigger" onclick="triggerGenerateVideo('${videoCardId}', '${encodeURIComponent(cleanPrompt).replace(/'/g, '%27')}')" style="margin-top: 8px; background: rgba(168, 85, 247, 0.2); color: #e9d5ff; border: 1px solid rgba(168, 85, 247, 0.4); padding: 7px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;">
               ▶ Bắt Đầu Render Video
             </button>
           </div>
@@ -1591,8 +1584,8 @@ function formatAssistantMessage(content, allowFileWrite = false) {
   // Parse <<<IMAGE_EDIT_OUTFIT:prompt>>> into Cyber Virtual Try-On Card
   formatted = formatted.replace(/<<<IMAGE_EDIT_OUTFIT:(.+?)>>>/g, (_, rawPrompt) => {
     const cleanPrompt = rawPrompt.trim();
-    const encodedPrompt = encodeURIComponent(cleanPrompt);
-    const imgUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&enhance=true&model=flux`;
+    const encodedPrompt = encodeURIComponent(cleanPrompt).replace(/'/g, '%27');
+    const imgUrl = `/api/image/proxy?prompt=${encodedPrompt}&width=1024&height=1024`;
     const outfitHtml = `
       <div class="cyber-image-card" style="margin: 16px 0; border: 1px solid rgba(236, 72, 153, 0.45); border-radius: 14px; background: rgba(25, 10, 25, 0.92); box-shadow: 0 0 35px rgba(236, 72, 153, 0.22); overflow: hidden;">
         <div style="padding: 10px 16px; background: rgba(236, 72, 153, 0.15); border-bottom: 1px solid rgba(236, 72, 153, 0.3); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
@@ -1633,8 +1626,8 @@ function formatAssistantMessage(content, allowFileWrite = false) {
   // Parse <<<IMAGE_EDIT_BODY:prompt>>> into Cyber Body Sculpting Card
   formatted = formatted.replace(/<<<IMAGE_EDIT_BODY:(.+?)>>>/g, (_, rawPrompt) => {
     const cleanPrompt = rawPrompt.trim();
-    const encodedPrompt = encodeURIComponent(cleanPrompt);
-    const imgUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&enhance=true&model=flux`;
+    const encodedPrompt = encodeURIComponent(cleanPrompt).replace(/'/g, '%27');
+    const imgUrl = `/api/image/proxy?prompt=${encodedPrompt}&width=1024&height=1024`;
     const bodyHtml = `
       <div class="cyber-image-card" style="margin: 16px 0; border: 1px solid rgba(16, 185, 129, 0.45); border-radius: 14px; background: rgba(6, 25, 20, 0.92); box-shadow: 0 0 35px rgba(16, 185, 129, 0.22); overflow: hidden;">
         <div style="padding: 10px 16px; background: rgba(16, 185, 129, 0.15); border-bottom: 1px solid rgba(16, 185, 129, 0.3); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
@@ -1676,6 +1669,7 @@ function formatAssistantMessage(content, allowFileWrite = false) {
   // Parse <<<IMAGE_ENHANCED:dataUrl>>> into Enhanced Image Result Card
   formatted = formatted.replace(/<<<IMAGE_ENHANCED:(.+?)>>>/g, (_, dataUrl) => {
     const cleanDataUrl = dataUrl.trim();
+    if (!isSafeImageDataUrl(cleanDataUrl)) return '';
     const enhancedHtml = `
       <div class="cyber-image-card" style="margin: 16px 0; border: 1px solid rgba(168, 85, 247, 0.5); border-radius: 14px; background: rgba(20, 10, 35, 0.9); box-shadow: 0 0 30px rgba(168, 85, 247, 0.25); overflow: hidden;">
         <div style="padding: 10px 16px; background: rgba(168, 85, 247, 0.18); border-bottom: 1px solid rgba(168, 85, 247, 0.3); display: flex; align-items: center; justify-content: space-between;">
@@ -1731,7 +1725,7 @@ function formatAssistantMessage(content, allowFileWrite = false) {
               </svg>
               <span>Sao chép</span>
             </button>
-            <button type="button" class="run-code-btn" onclick="runCodeFromButton(this, '${encoded}', '${escapeHtml(cleanFilename)}')">▶ Chạy thử</button>
+            <button type="button" class="run-code-btn" onclick="runCodeFromButton(this, '${encoded}', decodeURIComponent('${encodeInlineArgument(cleanFilename)}'))">▶ Chạy thử</button>
           </div>
           <pre><code class="language-code">${escapeHtml(trimmedCode)}</code></pre>
         </div>
@@ -1767,6 +1761,8 @@ function formatAssistantMessage(content, allowFileWrite = false) {
     codeBlocks.push(blockHtml);
     return `__CODE_BLOCK_${codeBlocks.length - 1}__`;
   });
+
+  formatted = escapeHtml(formatted);
 
   // Paragraphs & Lists
   const blocks = formatted.split(/\n\s*\n/);
@@ -1896,13 +1892,14 @@ function addMessageToDOM(role, content, time = getTimeString(), attachment = nul
       ? attachment.attachments
       : (Array.isArray(attachment?.images)
         ? attachment.images
-        : (attachment?.dataUrl ? [attachment] : [])));
+        : (attachment?.dataUrl ? [attachment] : [])))
+    .filter((image) => isSafeImageDataUrl(image?.dataUrl));
 
   if (imageList.length === 1 && imageList[0]?.dataUrl) {
-    attachmentHtml = `<div class="message-image-preview" title="Bấm để xem ảnh phóng to" onclick="openImageLightbox('${escapeHtml(imageList[0].dataUrl)}')"><img src="${escapeHtml(imageList[0].dataUrl)}" alt="Ảnh người dùng gửi" /></div>`;
+    attachmentHtml = `<div class="message-image-preview" title="Bấm để xem ảnh phóng to" onclick="openImageLightbox(decodeURIComponent('${encodeInlineArgument(imageList[0].dataUrl)}'))"><img src="${escapeHtml(imageList[0].dataUrl)}" alt="Ảnh người dùng gửi" /></div>`;
   } else if (imageList.length > 1) {
     const gridItems = imageList.filter((img) => img && img.dataUrl).map((img, idx) => `
-      <div class="grid-img-item" title="${escapeHtml(img.name || 'Ảnh ' + (idx + 1))} - Bấm để phóng to" onclick="openImageLightbox('${escapeHtml(img.dataUrl)}')">
+      <div class="grid-img-item" title="${escapeHtml(img.name || 'Ảnh ' + (idx + 1))} - Bấm để phóng to" onclick="openImageLightbox(decodeURIComponent('${encodeInlineArgument(img.dataUrl)}'))">
         <img src="${escapeHtml(img.dataUrl)}" alt="${escapeHtml(img.name || 'Ảnh ' + (idx + 1))}" loading="lazy" />
       </div>
     `).join('');
@@ -1918,7 +1915,7 @@ function addMessageToDOM(role, content, time = getTimeString(), attachment = nul
     <div class="message-content">
       <div class="message-author">
         <span class="author-name ${isCreatorUser ? 'author-name-creator' : ''}">${authorName}</span>
-        <span class="message-time">${time}</span>
+        <span class="message-time">${escapeHtml(time)}</span>
       </div>
       <div class="message-body">
         ${isUser ? `${attachmentHtml}${content ? `<p>${escapeHtml(content)}</p>` : ''}` : formatAssistantMessage(content)}
@@ -1940,7 +1937,7 @@ function addProjectCardToChat(projectName, fileList = []) {
     .slice(0, 15)
     .map(
       (f) => `
-      <span class="project-file-chip" title="Bấm để hỏi về file này" onclick="askAboutSpecificFile('${escapeHtml(f.path)}')">
+      <span class="project-file-chip" title="Bấm để hỏi về file này" onclick="askAboutSpecificFile(decodeURIComponent('${encodeInlineArgument(f.path)}'))">
         📄 ${escapeHtml(f.path)}
       </span>
     `
@@ -2785,7 +2782,7 @@ async function openInteractiveFolderBrowserModal(initialPath = '') {
 
   function renderBrowserContent(data) {
     const quickButtonsHtml = (data.quickPaths || []).map((q) => `
-      <button type="button" class="folder-quick-btn ${data.currentPath === q.path ? 'active' : ''}" onclick="window.__browseToPath('${escapeHtml(q.path)}')">
+      <button type="button" class="folder-quick-btn ${data.currentPath === q.path ? 'active' : ''}" onclick="window.__browseToPath(decodeURIComponent('${encodeInlineArgument(q.path)}'))">
         ${escapeHtml(q.name)}
       </button>
     `).join('');
@@ -2793,14 +2790,14 @@ async function openInteractiveFolderBrowserModal(initialPath = '') {
     const foldersHtml = (data.folders || []).map((f) => {
       const isSelected = selectedBrowseFolder === f.path;
       return `
-        <div class="folder-row ${isSelected ? 'selected' : ''}" onclick="window.__selectFolderRow('${escapeHtml(f.path)}', this)" ondblclick="window.__browseToPath('${escapeHtml(f.path)}')">
+        <div class="folder-row ${isSelected ? 'selected' : ''}" onclick="window.__selectFolderRow(decodeURIComponent('${encodeInlineArgument(f.path)}'), this)" ondblclick="window.__browseToPath(decodeURIComponent('${encodeInlineArgument(f.path)}'))">
           <div class="folder-row-left">
             <span class="folder-icon">📁</span>
             <span class="folder-name" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</span>
           </div>
           <div class="folder-row-right">
             <span class="folder-count-badge">${f.itemCount} mục</span>
-            <button type="button" class="folder-enter-btn" title="Vào thư mục này" onclick="event.stopPropagation(); window.__browseToPath('${escapeHtml(f.path)}')">Vào trong ➔</button>
+            <button type="button" class="folder-enter-btn" title="Vào thư mục này" onclick="event.stopPropagation(); window.__browseToPath(decodeURIComponent('${encodeInlineArgument(f.path)}'))">Vào trong ➔</button>
           </div>
         </div>
       `;
@@ -2833,12 +2830,12 @@ async function openInteractiveFolderBrowserModal(initialPath = '') {
 
         <!-- Path Bar -->
         <div class="folder-path-bar">
-          <button type="button" class="folder-nav-btn" title="Lên 1 cấp" ${!data.parentPath ? 'disabled' : ''} onclick="window.__browseToPath('${escapeHtml(data.parentPath || '')}')">
+          <button type="button" class="folder-nav-btn" title="Lên 1 cấp" ${!data.parentPath ? 'disabled' : ''} onclick="window.__browseToPath(decodeURIComponent('${encodeInlineArgument(data.parentPath || '')}'))">
             ⬆️ Lên 1 cấp
           </button>
           <input type="text" id="folderBrowserPathInput" class="folder-path-input" value="${escapeHtml(data.currentPath)}" spellcheck="false" autocomplete="off" />
           <button type="button" class="folder-go-btn" onclick="window.__browseToInputPath()">Đi tới</button>
-          <button type="button" class="folder-nav-btn" title="Làm mới" onclick="window.__browseToPath('${escapeHtml(data.currentPath)}')">🔄</button>
+          <button type="button" class="folder-nav-btn" title="Làm mới" onclick="window.__browseToPath(decodeURIComponent('${encodeInlineArgument(data.currentPath)}'))">🔄</button>
         </div>
 
         <!-- Items Explorer List -->
@@ -3454,10 +3451,10 @@ async function openProjectExplorerModal() {
             </div>
           </div>
           <div class="modal-file-actions">
-            <button type="button" class="modal-action-btn" onclick="window.__openFileEditor('${escapeHtml(filePath)}')">
+            <button type="button" class="modal-action-btn" onclick="window.__openFileEditor(decodeURIComponent('${encodeInlineArgument(filePath)}'))">
               ✏️ Sửa code
             </button>
-            <button type="button" class="modal-action-btn btn-delete" title="Xóa file" onclick="window.__deleteProjectFile('${escapeHtml(filePath)}')">
+            <button type="button" class="modal-action-btn btn-delete" title="Xóa file" onclick="window.__deleteProjectFile(decodeURIComponent('${encodeInlineArgument(filePath)}'))">
               🗑️
             </button>
           </div>
@@ -3512,7 +3509,7 @@ async function openFileEditorModal(filePath) {
           <span style="font-size: 0.82rem; color: #64748b; font-family: monospace;">
             Đường dẫn: <strong>${escapeHtml(filePath)}</strong>
           </span>
-          <button type="button" style="padding: 4px 10px; font-size: 0.76rem; font-weight: 700; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;" onclick="window.__askAiToModifyFile('${escapeHtml(filePath)}')">
+          <button type="button" style="padding: 4px 10px; font-size: 0.76rem; font-weight: 700; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;" onclick="window.__askAiToModifyFile(decodeURIComponent('${encodeInlineArgument(filePath)}'))">
             🤖 Nhờ AI sửa file này
           </button>
         </div>

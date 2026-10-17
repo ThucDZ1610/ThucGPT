@@ -19,7 +19,7 @@ const CONFIG = {
   // 1. TIER BẢO VỆ XÁC THỰC & OTP (Ngăn chặn spam mã Gmail & Brute-force mật khẩu)
   AUTH: {
     windowMs: 60 * 1000,    // 1 phút
-    max: 12,                // Tối đa 12 requests / phút
+    max: 5,                 // Tối đa 5 requests / phút cho xác thực
     name: 'AUTH_PROTECTION'
   },
 
@@ -32,37 +32,21 @@ const CONFIG = {
 
   // 3. TIER TOÀN CỤC CHO API (Chống flood request trên các API khác)
   GLOBAL: {
-    windowMs: 60 * 1000,    // 1 phút
-    max: 150,               // Tối đa 150 requests / phút
+    windowMs: 10 * 1000,    // 10 giây
+    max: 60,                // Tối đa 60 requests / 10 giây mỗi IP
     name: 'GLOBAL_RATE_LIMIT'
   },
 
   // 4. CẤU HÌNH TẠM GIAM IP (IP JAIL)
   JAIL: {
-    maxViolations: 5,       // Vi phạm quá giới hạn 5 lần liên tiếp sẽ bị cấm
-    durationMs: 15 * 60 * 1000 // Tạm cấm 15 phút
+    maxViolations: 1,       // Ban ngay khi vượt ngưỡng
+    durationMs: 5 * 60 * 1000 // Tạm cấm 5 phút
   }
 };
 
 // Hàm trích xuất IP chính xác qua các tầng Proxy / Cloudflare / Nginx
 function getClientIp(req) {
-  return (
-    req.headers['cf-connecting-ip'] ||
-    req.headers['x-real-ip'] ||
-    (req.headers['x-forwarded-for'] ? req.headers['x-forwarded-for'].split(',')[0].trim() : null) ||
-    req.socket?.remoteAddress ||
-    req.ip ||
-    '127.0.0.1'
-  );
-}
-
-// Kiểm tra xem request có thuộc diện miễn trừ không (Chủ nhân hoặc Key hợp lệ)
-function isExempt(req) {
-  const creatorKey = req.headers['x-creator-passcode'] || req.headers['x-bypass-key'] || req.body?.passcode || req.query?.passcode;
-  if (creatorKey === '1610200803062008') {
-    return true;
-  }
-  return false;
+  return req.ip || req.socket?.remoteAddress || 'unknown';
 }
 
 /**
@@ -70,10 +54,6 @@ function isExempt(req) {
  */
 function createAntiReqMiddleware(tierConfig) {
   return function antiReqMiddleware(req, res, next) {
-    if (isExempt(req)) {
-      return next();
-    }
-
     const ip = getClientIp(req);
     const now = Date.now();
 

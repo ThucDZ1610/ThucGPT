@@ -9,10 +9,34 @@
 (function () {
   'use strict';
 
-  const TOKEN_KEY = 'ai_turbo_auth_token';
   const USER_KEY = 'ai_turbo_user_data';
   let currentUser = null;
   let otpCooldownTimer = null;
+  localStorage.removeItem('ai_turbo_auth_token');
+
+  const baseFetch = window.fetch.bind(window);
+  window.fetch = (input, options = {}) => {
+    const url = new URL(typeof input === 'string' ? input : input.url, window.location.href);
+    const method = String(options.method || input.method || 'GET').toUpperCase();
+    const headers = new Headers(options.headers || input.headers || {});
+    if (url.origin === window.location.origin && url.pathname.startsWith('/api/') && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+      const csrfCookie = document.cookie.split(';').map((part) => part.trim()).find((part) => part.startsWith('ai_csrf='));
+      if (csrfCookie) headers.set('X-CSRF-Token', decodeURIComponent(csrfCookie.slice('ai_csrf='.length)));
+    }
+    return baseFetch(input, { ...options, credentials: 'same-origin', headers });
+  };
+
+  function isSafeAvatarUrl(value) {
+    if (typeof value !== 'string') return false;
+    if (/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(value)) return true;
+    try {
+      const url = new URL(value);
+      return url.protocol === 'https:'
+        && (url.hostname === 'api.dicebear.com' || url.hostname.endsWith('.googleusercontent.com'));
+    } catch (error) {
+      return false;
+    }
+  }
 
   function init() {
     bindHeaderButtons();
@@ -66,8 +90,7 @@
   }
 
   function handleAuthSuccess(data, customMessage) {
-    if (!data || !data.token || !data.user) return;
-    localStorage.setItem(TOKEN_KEY, data.token);
+    if (!data || !data.user) return;
     localStorage.setItem(USER_KEY, JSON.stringify(data.user));
     currentUser = data.user;
     updateUIForLoggedIn(currentUser);
@@ -81,27 +104,15 @@
   }
 
   async function checkExistingSession() {
-    const token = localStorage.getItem(TOKEN_KEY);
     const isChatPage = window.location.pathname === '/chat' || window.location.pathname.includes('index.html');
-    if (!token) {
-      updateUIForLoggedOut();
-      if (isChatPage) {
-        window.location.replace('/?require_login=1');
-      }
-      return;
-    }
-
     try {
-      const res = await fetch('/api/auth/me', {
-        headers: { 'Authorization': 'Bearer ' + token }
-      });
+      const res = await fetch('/api/auth/me', { cache: 'no-store' });
       const data = await res.json();
       if (data && data.success && data.user) {
         currentUser = data.user;
         localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
         updateUIForLoggedIn(currentUser);
       } else {
-        localStorage.removeItem(TOKEN_KEY);
         localStorage.removeItem(USER_KEY);
         currentUser = null;
         updateUIForLoggedOut();
@@ -135,8 +146,12 @@
     });
 
     icons.forEach(el => {
-      if (user.avatar) {
-        el.innerHTML = `<img src="${user.avatar}" alt="Avatar" class="auth-header-avatar" />`;
+      if (isSafeAvatarUrl(user.avatar)) {
+        const img = document.createElement('img');
+        img.src = user.avatar;
+        img.alt = 'Avatar';
+        img.className = 'auth-header-avatar';
+        el.replaceChildren(img);
       } else {
         el.textContent = '👤';
       }
@@ -241,7 +256,7 @@
     if (!alertBox) return;
     alertBox.style.display = 'block';
     alertBox.className = 'auth-alert-box ' + (isSuccess ? 'alert-success' : 'alert-danger');
-    alertBox.innerHTML = (isSuccess ? '✅ ' : '⚠️ ') + msg;
+    alertBox.textContent = (isSuccess ? '✅ ' : '⚠️ ') + msg;
   }
 
   function hideAlert() {
@@ -286,14 +301,27 @@
   function renderProfileAvatar(avatarUrl, username) {
     const avatarBox = document.getElementById('profileModalAvatar');
     if (!avatarBox) return;
-    const imgHtml = avatarUrl
-      ? `<img src="${avatarUrl}" alt="${username || 'User'}" />`
-      : '<span>👤</span>';
-    avatarBox.innerHTML = `${imgHtml}
-      <div class="avatar-hover-overlay">
-        <span class="overlay-icon">📷</span>
-        <span class="overlay-text">Đổi ảnh</span>
-      </div>`;
+    avatarBox.replaceChildren();
+    if (isSafeAvatarUrl(avatarUrl)) {
+      const img = document.createElement('img');
+      img.src = avatarUrl;
+      img.alt = username || 'User';
+      avatarBox.appendChild(img);
+    } else {
+      const fallback = document.createElement('span');
+      fallback.textContent = '👤';
+      avatarBox.appendChild(fallback);
+    }
+    const overlay = document.createElement('div');
+    overlay.className = 'avatar-hover-overlay';
+    const icon = document.createElement('span');
+    icon.className = 'overlay-icon';
+    icon.textContent = '📷';
+    const label = document.createElement('span');
+    label.className = 'overlay-text';
+    label.textContent = 'Đổi ảnh';
+    overlay.append(icon, label);
+    avatarBox.appendChild(overlay);
   }
 
   function resizeImageToAvatar(file, maxSize = 256) {
@@ -354,12 +382,10 @@
 
       if (progressEl) progressEl.textContent = '🚀 Đang lưu ảnh đại diện...';
 
-      const token = localStorage.getItem(TOKEN_KEY) || '';
       const res = await fetch('/api/auth/update-avatar', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ avatar: resizedDataUrl })
       });
@@ -755,7 +781,7 @@
           body: JSON.stringify({ email, username, password, confirmPassword, otp })
         });
         const data = await res.json();
-        if (data.success && data.token && data.user) {
+        if (data.success && data.user) {
           handleAuthSuccess(data, '🎉 Đăng ký thành viên thành công! Đang chuyển vào khung chat AI...');
         } else {
           showAlert(data.error || 'Đăng ký thất bại. Vui lòng kiểm tra lại thông tin.');
@@ -800,7 +826,7 @@
           body: JSON.stringify({ login, password })
         });
         const data = await res.json();
-        if (data.success && data.token && data.user) {
+        if (data.success && data.user) {
           handleAuthSuccess(data, '🎉 Đăng nhập thành công! Đang chuyển vào khung chat AI...');
         } else {
           showAlert(data.error || 'Tài khoản hoặc mật khẩu không chính xác.');
@@ -904,7 +930,7 @@
           body: JSON.stringify({ email, otp })
         });
         const data = await res.json();
-        if (data.success && data.token && data.user) {
+        if (data.success && data.user) {
           handleAuthSuccess(data, '🎉 Xác thực OTP thành công! Đang chuyển vào khung chat AI...');
         } else {
           showAlert(data.error || 'Mã OTP không hợp lệ hoặc đã hết hạn.');
@@ -951,7 +977,7 @@
           })
         });
         const data = await res.json();
-        if (data.success && data.token && data.user) {
+        if (data.success && data.user) {
           handleAuthSuccess(data, '🎉 Đăng nhập tài khoản Google thành công! Đang chuyển vào khung chat AI...');
         } else {
           showAlert(data.error || 'Đăng ký bằng Google thất bại.');
@@ -973,8 +999,8 @@
     });
 
     // Logout
-    document.getElementById('logoutBtn')?.addEventListener('click', () => {
-      localStorage.removeItem(TOKEN_KEY);
+    document.getElementById('logoutBtn')?.addEventListener('click', async () => {
+      await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
       localStorage.removeItem(USER_KEY);
       currentUser = null;
       updateUIForLoggedOut();
@@ -987,16 +1013,17 @@
     });
   }
 
-  function initGoogleSignIn() {
-    if (window.google && window.google.accounts && window.google.accounts.id) {
-      try {
-        window.google.accounts.id.initialize({
-          client_id: '861750244728-aiturbopro.apps.googleusercontent.com',
-          callback: handleGoogleCredentialResponse,
-          auto_select: false
-        });
-      } catch (e) {}
-    }
+  async function initGoogleSignIn() {
+    try {
+      const response = await fetch('/api/auth/config', { cache: 'no-store' });
+      const { googleClientId } = await response.json();
+      if (!googleClientId || !window.google?.accounts?.id) return;
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: handleGoogleCredentialResponse,
+        auto_select: false
+      });
+    } catch (error) {}
   }
 
   async function handleGoogleCredentialResponse(response) {
@@ -1009,7 +1036,7 @@
         body: JSON.stringify({ credential: response.credential })
       });
       const data = await res.json();
-      if (data.success && data.token && data.user) {
+      if (data.success && data.user) {
         handleAuthSuccess(data, '🎉 Đăng nhập Google thành công! Đang chuyển vào khung chat AI...');
       } else {
         showAlert(data.error || 'Đăng nhập Google không thành công.');
@@ -1029,7 +1056,7 @@
     showForgot: () => openAuthModal('forgot'),
     getCurrentUser: () => currentUser,
     logout: () => {
-      localStorage.removeItem(TOKEN_KEY);
+      fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
       localStorage.removeItem(USER_KEY);
       currentUser = null;
       updateUIForLoggedOut();

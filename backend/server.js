@@ -3,7 +3,6 @@ const http = require('http');
 const path = require('path');
 const fs = require('fs');
 const { execFile } = require('child_process');
-const cors = require('cors');
 const dotenv = require('dotenv');
 const dns = require('dns');
 const OpenAI = require('openai');
@@ -60,6 +59,7 @@ const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3000;
 const AI_PROVIDER = (process.env.AI_PROVIDER || 'ollama').toLowerCase();
+app.set('trust proxy', Number.parseInt(process.env.TRUST_PROXY_HOPS || '0', 10));
 
 // Initialize Replicate API Client with Token
 const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN || '';
@@ -74,6 +74,10 @@ if (Replicate && REPLICATE_API_TOKEN) {
 }
 const ROOT_DIR = path.resolve(__dirname, '..');
 const frontendDir = path.join(__dirname, '../frontend');
+const productionFrontendDir = path.join(ROOT_DIR, 'frontend-dist');
+const servedFrontendDir = process.env.NODE_ENV === 'production' && fs.existsSync(productionFrontendDir)
+  ? productionFrontendDir
+  : frontendDir;
 const WORKSPACE_DIR = path.resolve(__dirname, '../workspace');
 const CHAT_HISTORY_FILE = path.join(__dirname, 'chat-history.json');
 const CHAT_HISTORIES_DIR = path.join(__dirname, 'chat_histories');
@@ -380,24 +384,8 @@ function getWorkspaceFileContext() {
 }
 
 function getChatUserKey(req) {
-  try {
-    const authHeader = req.headers?.authorization || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : (req.headers?.['x-auth-token'] || req.query?.token);
-    if (token && authManager) {
-      const payload = authManager.verifyToken(token);
-      if (payload && (payload.id || payload.email || payload.username)) {
-        const id = payload.id || payload.username || payload.email;
-        return 'user_' + String(id).replace(/[^a-zA-Z0-9_-]/g, '_');
-      }
-    }
-  } catch (e) {}
-
-  const headerUser = req.headers?.['x-user-id'] || req.query?.userId;
-  if (headerUser && typeof headerUser === 'string' && headerUser.trim()) {
-    return 'user_' + headerUser.trim().replace(/[^a-zA-Z0-9_-]/g, '_');
-  }
-
-  return 'guest';
+  const id = req.user?.id;
+  return id ? `user_${String(id).replace(/[^a-zA-Z0-9_-]/g, '_')}` : null;
 }
 
 function readChatHistory(userKey = 'guest') {
@@ -631,39 +619,140 @@ NĂNG LỰC TẠO VIDEO AI & ĐIỆN ẢNH (AI VIDEO GENERATOR PROTOCOL - REPLIC
 `;
 }
 
-app.use(cors());
+const SESSION_COOKIE = 'ai_session';
+const SESSION_TIMEOUT_SECONDS = 8 * 60 * 60;
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+function parseCookies(header = '') {
+  return Object.fromEntries(header.split(';').map((part) => {
+    const separator = part.indexOf('=');
+    if (separator < 0) return ['', ''];
+    const value = part.slice(separator + 1).trim();
+    try {
+      return [part.slice(0, separator).trim(), decodeURIComponent(value)];
+    } catch (error) {
+      return [part.slice(0, separator).trim(), ''];
+    }
+  }).filter(([name]) => name));
+}
+
+function getSession(req) {
+  const sessionId = parseCookies(req.headers.cookie)[SESSION_COOKIE];
+  const session = sessionId && authManager?.getSession(sessionId);
+  if (session) {
+    req.sessionId = sessionId;
+    req.authSession = session;
+    req.user = session.user;
+  }
+  return session;
+}
+
+function setSessionCookies(res, session) {
+  const secure = 'Path=/; HttpOnly; Secure; SameSite=Strict';
+  res.setHeader('Set-Cookie', [
+    `${SESSION_COOKIE}=${encodeURIComponent(session.id)}; ${secure}; Max-Age=${SESSION_TIMEOUT_SECONDS}`,
+    `ai_csrf=${encodeURIComponent(session.csrfToken)}; Path=/; Secure; SameSite=Strict; Max-Age=${SESSION_TIMEOUT_SECONDS}`,
+  ]);
+}
+
+function clearSessionCookies(res) {
+  res.setHeader('Set-Cookie', [
+    `${SESSION_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`,
+    'ai_csrf=; Path=/; Secure; SameSite=Strict; Max-Age=0',
+  ]);
+}
+
+const SECRET_PATTERN = /(?:sk-[A-Za-z0-9_-]{16,}|gsk_[A-Za-z0-9_-]{16,}|AIza[A-Za-z0-9_-]{20,}|r8_[A-Za-z0-9_-]{16,}|Bearer\s+[A-Za-z0-9._-]{20,})/gi;
+const SECRET_ASSIGNMENT_PATTERN = /(API_KEY|TOKEN|SECRET|SMTP_PASS)\s*[=:]\s*[^\s,;]+/gi;
+function redactSecrets(value) {
+  return String(value)
+    .replace(SECRET_PATTERN, '[REDACTED]')
+    .replace(SECRET_ASSIGNMENT_PATTERN, '$1=[REDACTED]');
+}
+
+for (const method of ['error', 'warn']) {
+  const original = console[method].bind(console);
+  const sanitizeLogValue = (value, seen = new WeakSet()) => {
+    if (value instanceof Error) return redactSecrets(value.message);
+    if (typeof value === 'string') return redactSecrets(value);
+    if (!value || typeof value !== 'object') return value;
+    if (seen.has(value)) return '[Circular]';
+    seen.add(value);
+    if (Array.isArray(value)) return value.map((entry) => sanitizeLogValue(entry, seen));
+    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, sanitizeLogValue(entry, seen)]));
+  };
+  console[method] = (...args) => original(...args.map((value) => sanitizeLogValue(value)));
+}
+
+app.use((req, res, next) => {
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Content-Security-Policy', [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+    "script-src 'self' 'unsafe-inline' https://accounts.google.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' data: https://fonts.gstatic.com",
+    "img-src 'self' data: blob: https://api.dicebear.com https://image.pollinations.ai https://*.googleusercontent.com",
+    "media-src 'self' blob: https://replicate.delivery https://*.replicate.delivery",
+    "connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com",
+    "frame-src https://accounts.google.com",
+  ].join('; '));
+  next();
+});
+
+app.use(antiReq?.antiReqGlobal || ((req, res, next) => next()));
+app.use('/api/auth', antiReq?.antiReqAuth || ((req, res, next) => next()));
+app.use((req, res, next) => {
+  const origin = req.get('origin');
+  if (origin) {
+    try {
+      if (new URL(origin).host !== req.get('host')) {
+        return res.status(403).json({ success: false, error: 'Cross-origin request denied.' });
+      }
+    } catch (error) {
+      return res.status(403).json({ success: false, error: 'Cross-origin request denied.' });
+    }
+  }
+  next();
+});
+app.use((req, res, next) => {
+  if (SAFE_METHODS.has(req.method)) return next();
+  const session = getSession(req);
+  if (!session) return next();
+  if (req.get('x-csrf-token') !== session.csrfToken) {
+    return res.status(403).json({ success: false, error: 'CSRF validation failed.' });
+  }
+  next();
+});
+
 app.use(express.json({ limit: '50mb' }));
-app.use(express.static(frontendDir, { index: false }));
+app.use(express.static(servedFrontendDir, { index: false }));
 
-// ==============================================================================
-// ANTI-REQ DEFENSE SYSTEM (Tích hợp bảo vệ đa tầng chống spam / flood request)
-// ==============================================================================
-// 1. Tier Xác thực & OTP (Chống spam OTP Gmail & Brute-force mật khẩu: 12 req/phút)
-app.use('/api/auth', (req, res, next) => {
-  if (antiReq && antiReq.antiReqAuth) {
-    return antiReq.antiReqAuth(req, res, next);
-  }
-  next();
-});
-
-// 2. Tier AI, Image & Video (Chống bot spam làm sập model và cạn kiệt key: 35 req/phút)
-app.use(['/api/chat', '/api/image', '/api/video'], (req, res, next) => {
-  if (antiReq && antiReq.antiReqAi) {
-    return antiReq.antiReqAi(req, res, next);
-  }
-  next();
-});
-
-// 3. Tier Toàn cục (Chống flood request API chung: 150 req/phút)
-app.use('/api', (req, res, next) => {
-  if (antiReq && antiReq.antiReqGlobal) {
-    return antiReq.antiReqGlobal(req, res, next);
-  }
+app.use((req, res, next) => {
+  const originalJson = res.json.bind(res);
+  res.json = (body) => {
+    if (res.statusCode >= 500) {
+      body = { success: false, error: 'Internal server error.' };
+    } else if (body && typeof body === 'object') {
+      for (const key of ['error', 'details', 'rawOutput', 'message']) {
+        if (typeof body[key] === 'string') body[key] = redactSecrets(body[key]);
+      }
+    }
+    return originalJson(body);
+  };
   next();
 });
 
 // Endpoint kiểm tra trạng thái và thông số bảo mật Anti-Req
-app.get('/api/security/stats', (req, res) => {
+app.get('/api/security/stats', requireCreatorAuth, (req, res) => {
   if (antiReq && antiReq.getSecurityStats) {
     return res.json({ success: true, stats: antiReq.getSecurityStats() });
   }
@@ -1010,12 +1099,7 @@ const streamOpenAICompatible = async (client, model, message, history, res, boos
 };
 
 app.get('/api/health', (req, res) => {
-  res.json({
-    ok: true,
-    message: 'AI server is running',
-    provider: AI_PROVIDER,
-    model: AI_PROVIDER === 'ollama' ? (process.env.OLLAMA_MODEL || 'qwen2.5-coder:7b') : undefined,
-  });
+  res.json({ ok: true });
 });
 
 // 1. Endpoint Tạo Hình Ảnh Nghệ Thuật AI (Replicate Flux / SDXL Pro Engine & Fast Fallback)
@@ -1078,6 +1162,48 @@ app.post('/api/image/generate', requireUserAuth, async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/image/proxy', requireUserAuth, async (req, res) => {
+  try {
+    const prompt = typeof req.query.prompt === 'string' ? req.query.prompt.trim() : '';
+    if (!prompt || prompt.length > 4000) {
+      return res.status(400).json({ success: false, error: 'Image prompt is invalid.' });
+    }
+
+    const imageUrl = new URL(`https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}`);
+    const dimension = (value) => {
+      const parsed = Number.parseInt(value, 10);
+      return Number.isInteger(parsed) ? Math.min(1536, Math.max(256, parsed)) : 1024;
+    };
+    imageUrl.searchParams.set('width', dimension(req.query.width));
+    imageUrl.searchParams.set('height', dimension(req.query.height));
+    imageUrl.searchParams.set('seed', String(Number.parseInt(req.query.seed, 10) || Math.floor(Math.random() * 1000000)));
+    imageUrl.searchParams.set('nologo', 'true');
+    imageUrl.searchParams.set('enhance', 'true');
+    imageUrl.searchParams.set('model', 'flux');
+
+    const upstream = await fetch(imageUrl, {
+      redirect: 'error',
+      signal: AbortSignal.timeout(45000),
+    });
+    const contentType = upstream.headers.get('content-type') || '';
+    const maxImageBytes = 12 * 1024 * 1024;
+    const declaredLength = Number.parseInt(upstream.headers.get('content-length') || '0', 10);
+    if (!upstream.ok || !/^image\/(?:png|jpeg|webp)$/.test(contentType) || declaredLength > maxImageBytes) {
+      return res.status(502).json({ success: false, error: 'Image generation failed.' });
+    }
+
+    const image = Buffer.from(await upstream.arrayBuffer());
+    if (image.length > maxImageBytes) {
+      return res.status(502).json({ success: false, error: 'Image generation failed.' });
+    }
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.type(contentType).send(image);
+  } catch (error) {
+    console.warn('[Image proxy] Upstream request failed:', error);
+    res.status(502).json({ success: false, error: 'Image generation failed.' });
   }
 });
 
@@ -1209,10 +1335,7 @@ app.post('/api/video/generate', requireUserAuth, async (req, res) => {
         }
       } catch (videoErr) {
         console.warn('[Replicate Video Error]:', videoErr.message);
-        return res.status(400).json({
-          success: false,
-          error: `Replicate Video: ${videoErr.message}. (Lưu ý: Nếu tài khoản chưa nạp credit trên replicate.com, bạn cần thêm thẻ/credit để chạy mô hình GPU tạo video).`
-        });
+        return res.status(502).json({ success: false, error: 'Video generation failed.' });
       }
     } else {
       return res.status(503).json({
@@ -1245,13 +1368,11 @@ app.get('/api/replicate/status', requireUserAuth, async (req, res) => {
       headers: { Authorization: `Bearer ${REPLICATE_API_TOKEN}` }
     });
     if (accRes.ok) {
-      const data = await accRes.json();
-      return res.json({ connected: true, account: data });
+      return res.json({ connected: true });
     }
-    const errData = await accRes.json().catch(() => ({}));
-    return res.json({ connected: false, error: errData });
+    return res.json({ connected: false });
   } catch (err) {
-    res.status(500).json({ connected: false, error: err.message });
+    res.status(500).json({ connected: false, error: 'Status unavailable.' });
   }
 });
 
@@ -1282,7 +1403,7 @@ app.post('/api/auth/verify-creator', (req, res) => {
 });
 
 // Endpoint tạo nhanh Key 60 phút từ giao diện web
-app.post('/api/keys/generate', (req, res) => {
+app.post('/api/keys/generate', requireCreatorAuth, (req, res) => {
   try {
     const { durationMinutes = 60, label = 'Tạo từ giao diện web' } = req.body || {};
     const keyData = keyManager.generateBypassKey(durationMinutes, label);
@@ -1295,6 +1416,10 @@ app.post('/api/keys/generate', (req, res) => {
 // ==============================================================================
 // USER AUTHENTICATION & GMAIL OTP SYSTEM
 // ==============================================================================
+
+app.get('/api/auth/config', (req, res) => {
+  res.json({ googleClientId: process.env.GOOGLE_CLIENT_ID || '' });
+});
 
 // Gửi mã OTP xác thực qua Gmail SMTP (FaceCheck credentials)
 app.post('/api/auth/send-otp', async (req, res) => {
@@ -1321,7 +1446,8 @@ app.post('/api/auth/register', async (req, res) => {
     }
     const { email, username, password, confirmPassword, otp } = req.body || {};
     const result = await authManager.registerUser({ email, username, password, confirmPassword, otp });
-    res.json({ success: true, ...result });
+    const session = issueSession(req, res, result.user);
+    res.json({ success: true, user: result.user, csrfToken: session.csrfToken });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }
@@ -1335,7 +1461,8 @@ app.post('/api/auth/login', async (req, res) => {
     }
     const { login, password } = req.body || {};
     const result = await authManager.loginUser({ login, password });
-    res.json({ success: true, ...result });
+    const session = issueSession(req, res, result.user);
+    res.json({ success: true, user: result.user, csrfToken: session.csrfToken });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }
@@ -1349,7 +1476,8 @@ app.post('/api/auth/login-otp', async (req, res) => {
     }
     const { email, otp } = req.body || {};
     const result = await authManager.loginWithOtp({ email, otp });
-    res.json({ success: true, ...result });
+    const session = issueSession(req, res, result.user);
+    res.json({ success: true, user: result.user, csrfToken: session.csrfToken });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }
@@ -1377,7 +1505,8 @@ app.post('/api/auth/google', async (req, res) => {
     }
     const { credential, email, name, picture, googleId } = req.body || {};
     const result = await authManager.loginWithGoogle({ credential, email, name, picture, googleId });
-    res.json({ success: true, ...result });
+    const session = issueSession(req, res, result.user);
+    res.json({ success: true, user: result.user, csrfToken: session.csrfToken });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }
@@ -1389,16 +1518,11 @@ app.get('/api/auth/me', (req, res) => {
     if (!authManager) {
       return res.status(500).json({ success: false, error: 'Hệ thống xác thực chưa sẵn sàng.' });
     }
-    const authHeader = req.headers.authorization || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : (req.headers['x-auth-token'] || req.query.token);
-    if (!token) {
+    const session = getSession(req);
+    if (!session) {
       return res.status(401).json({ success: false, error: 'Chưa đăng nhập.' });
     }
-    const user = authManager.getUserByToken(token);
-    if (!user) {
-      return res.status(401).json({ success: false, error: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn.' });
-    }
-    res.json({ success: true, user });
+    res.json({ success: true, user: session.user, csrfToken: session.csrfToken });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -1406,29 +1530,23 @@ app.get('/api/auth/me', (req, res) => {
 
 // Đăng xuất
 app.post('/api/auth/logout', (req, res) => {
+  const sessionId = parseCookies(req.headers.cookie)[SESSION_COOKIE];
+  authManager?.destroySession(sessionId);
+  clearSessionCookies(res);
   res.json({ success: true, message: 'Đăng xuất thành công.' });
 });
 
 // Cập nhật ảnh đại diện (Avatar) cho tài khoản
-app.post('/api/auth/update-avatar', (req, res) => {
+app.post('/api/auth/update-avatar', requireAuthenticatedUser, (req, res) => {
   try {
-    if (!authManager) {
+    if (!authManager || !req.user) {
       return res.status(500).json({ success: false, error: 'Hệ thống xác thực chưa sẵn sàng.' });
-    }
-    const authHeader = req.headers.authorization || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : (req.headers['x-auth-token'] || req.body?.token);
-    if (!token) {
-      return res.status(401).json({ success: false, error: 'Chưa đăng nhập tài khoản.' });
-    }
-    const user = authManager.getUserByToken(token);
-    if (!user) {
-      return res.status(401).json({ success: false, error: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn.' });
     }
     const { avatar } = req.body || {};
     if (!avatar) {
       return res.status(400).json({ success: false, error: 'Chưa có dữ liệu ảnh đại diện.' });
     }
-    const result = authManager.updateUserAvatar(user.id, avatar);
+    const result = authManager.updateUserAvatar(req.user.id, avatar);
     if (result.success) {
       res.json({ success: true, message: 'Cập nhật ảnh đại diện thành công!', user: result.user });
     } else {
@@ -1440,6 +1558,23 @@ app.post('/api/auth/update-avatar', (req, res) => {
 });
 
 // Middleware yêu cầu đăng nhập tài khoản để sử dụng khung chat AI
+function issueSession(req, res, user) {
+  if (req.sessionId) authManager.destroySession(req.sessionId);
+  const session = authManager.createSession(user.id);
+  setSessionCookies(res, session);
+  return session;
+}
+
+function requireAuthenticatedUser(req, res, next) {
+  if (!authManager) {
+    return res.status(503).json({ success: false, error: 'Authentication is unavailable.' });
+  }
+  if (!getSession(req)) {
+    return res.status(401).json({ success: false, error: 'Vui lòng đăng nhập tài khoản.' });
+  }
+  next();
+}
+
 function requireUserAuth(req, res, next) {
   // Cho phép nếu có Master Creator Passcode hoặc Key x2
   const creatorKey = req.headers['x-creator-passcode'] || req.headers['x-bypass-key'];
@@ -1449,24 +1584,10 @@ function requireUserAuth(req, res, next) {
     if (keyManager && keyManager.validateBypassKey(clean)?.valid) return next();
   }
 
-  if (!authManager) return next();
-
-  const authHeader = req.headers.authorization || '';
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : (req.headers['x-auth-token'] || req.query?.token || req.body?.token);
-  if (!token) {
-    return res.status(401).json({ success: false, error: 'Vui lòng đăng nhập tài khoản để sử dụng AI Turbo Pro.' });
-  }
-
-  const user = authManager.getUserByToken(token);
-  if (!user) {
-    return res.status(401).json({ success: false, error: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn.' });
-  }
-
-  req.user = user;
-  next();
+  return requireAuthenticatedUser(req, res, next);
 }
 
-app.get('/api/thucgpt/status', (req, res) => {
+app.get('/api/thucgpt/status', requireCreatorAuth, (req, res) => {
   const knowledge = thucgpt.scanProjectKnowledge(true);
   res.json({
     ok: true,
@@ -1479,12 +1600,12 @@ app.get('/api/thucgpt/status', (req, res) => {
   });
 });
 
-app.get('/api/chat-history', (req, res) => {
+app.get('/api/chat-history', requireAuthenticatedUser, (req, res) => {
   const userKey = getChatUserKey(req);
   res.json({ success: true, userKey, sessions: readChatHistory(userKey) });
 });
 
-app.put('/api/chat-history', (req, res) => {
+app.put('/api/chat-history', requireAuthenticatedUser, (req, res) => {
   try {
     const userKey = getChatUserKey(req);
     const sessions = Array.isArray(req.body?.sessions) ? req.body.sessions : [];
@@ -1496,7 +1617,7 @@ app.put('/api/chat-history', (req, res) => {
   }
 });
 
-app.delete('/api/chat-history', (req, res) => {
+app.delete('/api/chat-history', requireAuthenticatedUser, (req, res) => {
   try {
     const userKey = getChatUserKey(req);
     deleteChatHistory(userKey);
@@ -1559,7 +1680,7 @@ app.post('/api/execute', requireCreatorAuth, async (req, res) => {
 });
 
 // Serve Workspace Preview Static Endpoint
-app.use('/workspace-preview', express.static(WORKSPACE_DIR));
+app.use('/workspace-preview', requireAuthenticatedUser, express.static(WORKSPACE_DIR));
 
 app.post('/api/workspace/test', requireCreatorAuth, async (req, res) => {
   try {
@@ -2031,8 +2152,8 @@ app.post('/api/chat/stream', requireUserAuth, async (req, res) => {
     return res.end();
   } catch (error) {
     console.error('AI stream error:', error);
-    if (!res.headersSent) return res.status(500).json({ error: error.message || 'Unknown error' });
-    return res.end(`\n\n[Lỗi: ${error.message}]`);
+    if (!res.headersSent) return res.status(500).json({ error: 'AI request failed.' });
+    return res.end('\n\n[Request failed.]');
   }
 });
 
@@ -2562,6 +2683,14 @@ app.get('/api/realtime/events', (req, res) => {
   });
 });
 
+app.use((error, req, res, next) => {
+  console.error('[Request error]', error);
+  if (res.headersSent) return next(error);
+  const status = error.status === 413 ? 413 : (error.type === 'entity.parse.failed' ? 400 : 500);
+  const message = status === 413 ? 'Request too large.' : (status === 400 ? 'Invalid request.' : 'Internal server error.');
+  res.status(status).json({ success: false, error: message });
+});
+
 function broadcastRealtime(payload) {
   const json = JSON.stringify(payload);
   for (const client of realtimeClients) {
@@ -2630,12 +2759,12 @@ try {
 
 // Route trang chủ hiển thị website giới thiệu ThucGPT (Landing Page khi chạy hosting / truy cập domain chính)
 app.get(['/', '/info', '/about', '/info.html'], (req, res) => {
-  res.sendFile(path.join(frontendDir, 'info.html'));
+  res.sendFile(path.join(servedFrontendDir, 'info.html'));
 });
 
 // Route khung chat AI: Chỉ cho phép truy cập qua /chat hoặc /workspace
 app.get(['/chat', '/app', '/workspace'], (req, res) => {
-  res.sendFile(path.join(frontendDir, 'index.html'));
+  res.sendFile(path.join(servedFrontendDir, 'index.html'));
 });
 
 // Fallback: Mọi đường dẫn không xác định chuyển về Landing Page

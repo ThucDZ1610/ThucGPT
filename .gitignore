@@ -1,6 +1,12 @@
 node_modules/
+frontend-dist/
 .env
 *.db
 *.log
 chat_histories/
 temp-keys.json
+backend/users.json
+backend/otp_store.json
+backend/chat-history.json
+backups/**/chat-history.json
+backups/**/backend/users.json

@@ -14,12 +14,13 @@
     />
     <link rel="stylesheet" href="/styles.css?v=3.2" />
     <script>
-      // Auth Guard: Bắt buộc phải có tài khoản / đăng nhập mới được truy cập khung chat AI
+      // Kiểm tra session HttpOnly ở server trước khi hiển thị khung chat.
       (function() {
-        var token = localStorage.getItem('ai_turbo_auth_token');
-        if (!token) {
+        fetch('/api/auth/me', { credentials: 'same-origin', cache: 'no-store' }).then(function(response) {
+          if (!response.ok) window.location.replace('/?require_login=1');
+        }).catch(function() {
           window.location.replace('/?require_login=1');
-        }
+        });
       })();
     </script>
   </head>
@@ -1075,6 +1076,7 @@
 
     <!-- Google Identity Services & Auth Module -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="/security.js?v=3.2"></script>
     <script src="/auth.js?v=3.2"></script>
 
     <!-- Main Logic Script & Realtime LiveReload -->

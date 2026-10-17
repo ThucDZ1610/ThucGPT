@@ -1,11 +1,16 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 const nodemailer = require('nodemailer');
+const { OAuth2Client } = require('google-auth-library');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const USERS_FILE = path.join(__dirname, 'users.json');
-const JWT_SECRET = process.env.JWT_SECRET || 'ai_turbo_pro_secret_thucgpt_2026';
+const SESSION_TIMEOUT_MS = 8 * 60 * 60 * 1000;
+const sessions = new Map();
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+const googleAuthClient = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : null;
 
 // Initialize users file if missing
 if (!fs.existsSync(USERS_FILE)) {
@@ -34,17 +39,15 @@ function saveUsers(users) {
 }
 
 // Mailer Transporter (Configured with FaceCheck Gmail SMTP)
+const smtpAuth = process.env.SMTP_USER && process.env.SMTP_PASS
+  ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+  : null;
+
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
   port: parseInt(process.env.SMTP_PORT || '465'),
   secure: (process.env.SMTP_PORT || '465') == 465,
-  auth: {
-    user: process.env.SMTP_USER || 'tancongmangwebsite@gmail.com',
-    pass: process.env.SMTP_PASS || 'uymvogwfevlhdixu',
-  },
-  tls: {
-    rejectUnauthorized: false
-  },
+  ...(smtpAuth ? { auth: smtpAuth } : {}),
   connectionTimeout: 10000,
   greetingTimeout: 10000,
   socketTimeout: 15000
@@ -102,55 +105,72 @@ function validatePassword(password) {
   return { valid: true };
 }
 
-// Helper: Hash password
-function hashPassword(password, salt = null) {
-  if (!salt) {
-    salt = crypto.randomBytes(16).toString('hex');
+// Helper: Hash password with bcrypt's per-password random salt.
+async function hashPassword(password) {
+  return { hash: await bcrypt.hash(password, 12), salt: null };
+}
+
+async function verifyPassword(password, hash, salt) {
+  if (/^\$2[aby]\$/.test(hash || '')) {
+    return bcrypt.compare(password, hash);
   }
-  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
-  return { hash, salt };
+  if (!hash || !salt) return false;
+  const calculated = crypto.scryptSync(password, salt, 64);
+  const expected = Buffer.from(hash, 'hex');
+  return expected.length === calculated.length && crypto.timingSafeEqual(calculated, expected);
 }
 
-// Helper: Verify password
-function verifyPassword(password, hash, salt) {
-  const calculated = crypto.scryptSync(password, salt, 64).toString('hex');
-  return calculated === hash;
+function createSession(userId) {
+  const id = crypto.randomBytes(32).toString('base64url');
+  const csrfToken = crypto.randomBytes(32).toString('base64url');
+  const expiresAt = Date.now() + SESSION_TIMEOUT_MS;
+  sessions.set(id, { userId, csrfToken, expiresAt });
+  return { id, csrfToken, expiresAt };
 }
 
-// Helper: Generate session token
-function generateToken(user) {
-  const payload = {
-    id: user.id,
-    email: user.email,
-    username: user.username,
-    createdAt: Date.now(),
-    expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000 // 7 days
-  };
-  const str = Buffer.from(JSON.stringify(payload)).toString('base64url');
-  const signature = crypto.createHmac('sha256', JWT_SECRET).update(str).digest('base64url');
-  return str + '.' + signature;
-}
-
-// Helper: Verify session token
-function verifyToken(token) {
-  if (!token || typeof token !== 'string' || !token.includes('.')) return null;
-  const [str, sig] = token.split('.');
-  const expectedSig = crypto.createHmac('sha256', JWT_SECRET).update(str).digest('base64url');
-  if (sig !== expectedSig) return null;
-  try {
-    const payload = JSON.parse(Buffer.from(str, 'base64url').toString('utf8'));
-    if (payload.expiresAt && Date.now() > payload.expiresAt) return null;
-    return payload;
-  } catch (err) {
+function getSession(id) {
+  const session = sessions.get(id);
+  if (!session) return null;
+  if (Date.now() >= session.expiresAt) {
+    sessions.delete(id);
     return null;
   }
+  const user = getUsers().find((entry) => entry.id === session.userId);
+  if (!user) {
+    sessions.delete(id);
+    return null;
+  }
+  return {
+    user: {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      avatar: user.avatar,
+      role: user.role,
+    },
+    csrfToken: session.csrfToken,
+    expiresAt: session.expiresAt,
+  };
 }
+
+function destroySession(id) {
+  if (id) sessions.delete(id);
+}
+
+const sessionCleanup = setInterval(() => {
+  const now = Date.now();
+  for (const [id, session] of sessions) {
+    if (now >= session.expiresAt) sessions.delete(id);
+  }
+}, 60 * 60 * 1000);
+sessionCleanup.unref();
 
 // Generate & Send OTP via Gmail
 async function sendOtp(email, type = 'register') {
   if (!email || !email.includes('@')) {
     throw new Error('Địa chỉ email không hợp lệ.');
   }
+  if (!smtpAuth) throw new Error('Dịch vụ email chưa được cấu hình.');
 
   const cleanEmail = email.trim().toLowerCase();
   const key = cleanEmail + '_' + type;
@@ -176,8 +196,6 @@ async function sendOtp(email, type = 'register') {
     attempts: 0
   };
   saveOtpStore(store);
-
-  console.log(`[Auth] Generated OTP for ${cleanEmail} (${type}): ${code} (Valid for 15 minutes)`);
 
   // Action title & description
   let actionTitle = 'Xác thực tài khoản';
@@ -241,7 +259,7 @@ async function sendOtp(email, type = 'register') {
     return { success: true, message: 'Mã OTP đã được gửi đến email của bạn!' };
   } catch (err) {
     console.error('[Auth] Failed to send OTP email:', err);
-    throw new Error('Không thể gửi mã OTP qua Gmail. Lỗi: ' + (err.message || 'SMTP Error'));
+    throw new Error('Không thể gửi mã OTP. Vui lòng thử lại sau.');
   }
 }
 
@@ -327,7 +345,7 @@ async function registerUser({ email, username, password, confirmPassword, otp })
     throw new Error('Tên tài khoản này đã có người sử dụng. Vui lòng chọn tên khác.');
   }
 
-  const { hash, salt } = hashPassword(password);
+  const { hash, salt } = await hashPassword(password);
   const newUser = {
     id: 'usr_' + crypto.randomBytes(8).toString('hex'),
     username: cleanUsername,
@@ -342,7 +360,6 @@ async function registerUser({ email, username, password, confirmPassword, otp })
   users.push(newUser);
   saveUsers(users);
 
-  const token = generateToken(newUser);
   return {
     user: {
       id: newUser.id,
@@ -350,8 +367,7 @@ async function registerUser({ email, username, password, confirmPassword, otp })
       email: newUser.email,
       avatar: newUser.avatar,
       role: newUser.role
-    },
-    token
+    }
   };
 }
 
@@ -372,12 +388,17 @@ async function loginUser({ login, password }) {
     throw new Error('Tài khoản hoặc mật khẩu không chính xác.');
   }
 
-  const isValid = verifyPassword(password, user.passwordHash, user.salt);
+  const isValid = await verifyPassword(password, user.passwordHash, user.salt);
   if (!isValid) {
     throw new Error('Tài khoản hoặc mật khẩu không chính xác.');
   }
 
-  const token = generateToken(user);
+  if (!/^\$2[aby]\$/.test(user.passwordHash)) {
+    const { hash, salt } = await hashPassword(password);
+    user.passwordHash = hash;
+    user.salt = salt;
+    saveUsers(users);
+  }
   return {
     user: {
       id: user.id,
@@ -385,8 +406,7 @@ async function loginUser({ login, password }) {
       email: user.email,
       avatar: user.avatar,
       role: user.role
-    },
-    token
+    }
   };
 }
 
@@ -419,7 +439,6 @@ async function loginWithOtp({ email, otp }) {
     saveUsers(users);
   }
 
-  const token = generateToken(user);
   return {
     user: {
       id: user.id,
@@ -427,8 +446,7 @@ async function loginWithOtp({ email, otp }) {
       email: user.email,
       avatar: user.avatar,
       role: user.role
-    },
-    token
+    }
   };
 }
 
@@ -458,40 +476,37 @@ async function resetPassword({ email, otp, newPassword, confirmPassword }) {
     throw new Error('Không tìm thấy tài khoản tương ứng với email này.');
   }
 
-  const { hash, salt } = hashPassword(newPassword);
+  const { hash, salt } = await hashPassword(newPassword);
   users[userIndex].passwordHash = hash;
   users[userIndex].salt = salt;
   users[userIndex].updatedAt = new Date().toISOString();
   saveUsers(users);
+  for (const [sessionId, session] of sessions) {
+    if (session.userId === users[userIndex].id) sessions.delete(sessionId);
+  }
 
   return { success: true, message: 'Mật khẩu đã được cập nhật thành công! Vui lòng đăng nhập bằng mật khẩu mới.' };
 }
 
 // Google Sign-In
 async function loginWithGoogle({ credential, email, name, picture, googleId }) {
-  let googleEmail = email;
-  let googleName = name;
-  let googlePic = picture;
-  let sub = googleId;
+  if (!googleAuthClient || !credential) throw new Error('Đăng nhập Google chưa được cấu hình.');
 
-  if (credential) {
-    try {
-      const parts = credential.split('.');
-      if (parts.length === 3) {
-        const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
-        googleEmail = payload.email;
-        googleName = payload.name || payload.given_name;
-        googlePic = payload.picture;
-        sub = payload.sub;
-      }
-    } catch (err) {
-      console.error('[Auth] Error parsing Google credential:', err);
-    }
+  let payload;
+  try {
+    const ticket = await googleAuthClient.verifyIdToken({ idToken: credential, audience: GOOGLE_CLIENT_ID });
+    payload = ticket.getPayload();
+  } catch (error) {
+    throw new Error('Credential Google không hợp lệ.');
+  }
+  if (!payload?.email || !payload.email_verified || !payload.sub) {
+    throw new Error('Không thể xác thực tài khoản Google.');
   }
 
-  if (!googleEmail) {
-    throw new Error('Không thể xác thực thông tin tài khoản Google.');
-  }
+  const googleEmail = payload.email;
+  const googleName = payload.name || payload.given_name;
+  const googlePic = payload.picture;
+  const sub = payload.sub;
 
   const cleanEmail = googleEmail.trim().toLowerCase();
   const users = getUsers();
@@ -519,7 +534,6 @@ async function loginWithGoogle({ credential, email, name, picture, googleId }) {
     saveUsers(users);
   }
 
-  const token = generateToken(user);
   return {
     user: {
       id: user.id,
@@ -527,30 +541,20 @@ async function loginWithGoogle({ credential, email, name, picture, googleId }) {
       email: user.email,
       avatar: user.avatar,
       role: user.role
-    },
-    token
-  };
-}
-
-// Get user by token
-function getUserByToken(token) {
-  const payload = verifyToken(token);
-  if (!payload || !payload.id) return null;
-  const users = getUsers();
-  const user = users.find(u => u.id === payload.id);
-  if (!user) return null;
-  return {
-    id: user.id,
-    username: user.username,
-    email: user.email,
-    avatar: user.avatar,
-    role: user.role
+    }
   };
 }
 
 // Update user avatar
 function updateUserAvatar(userId, newAvatar) {
-  if (!userId || !newAvatar) return { success: false, error: 'Thiếu thông tin người dùng hoặc ảnh đại diện.' };
+  if (
+    !userId
+    || typeof newAvatar !== 'string'
+    || newAvatar.length > 800000
+    || !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(newAvatar)
+  ) {
+    return { success: false, error: 'Ảnh đại diện không hợp lệ.' };
+  }
   const users = getUsers();
   const user = users.find(u => u.id === userId);
   if (!user) return { success: false, error: 'Không tìm thấy tài khoản người dùng.' };
@@ -579,8 +583,8 @@ module.exports = {
   loginWithOtp,
   resetPassword,
   loginWithGoogle,
-  getUserByToken,
+  createSession,
+  getSession,
+  destroySession,
   updateUserAvatar,
-  verifyToken,
-  generateToken
 };
