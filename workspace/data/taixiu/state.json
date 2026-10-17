@@ -1,0 +1,20 @@
+{
+  "enabled": true,
+  "players": {
+    "local": 11000
+  },
+  "history": [
+    {
+      "dice": [
+        3,
+        3,
+        6
+      ],
+      "total": 12,
+      "result": "tai",
+      "choice": "tai",
+      "amount": 1000,
+      "time": "2026-08-23T12:22:42.837Z"
+    }
+  ]
+}

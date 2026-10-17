@@ -1,0 +1,1 @@
+loadstring(game:HttpGet("https://raw.githubusercontent.com/ThucMaster/ThucHub/main/BloxFruitMain.lua"))()

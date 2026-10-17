@@ -1,0 +1,127 @@
+[
+  {
+    "id": "usr_ef694a1e884d6db7",
+    "username": "Google_Test_User",
+    "email": "google_tester@gmail.com",
+    "googleId": "g_123456789",
+    "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=google_tester%40gmail.com",
+    "role": "user",
+    "createdAt": "2026-09-05T12:47:22.995Z"
+  },
+  {
+    "id": "usr_0f0c2dc02fb96e8f",
+    "username": "Nguyen_Van_Thuc",
+    "email": "thuc_tester_google@gmail.com",
+    "googleId": "g_9988776655",
+    "avatar": "https://lh3.googleusercontent.com/a/test",
+    "role": "user",
+    "createdAt": "2026-09-05T12:55:07.414Z"
+  },
+  {
+    "id": "usr_bab86422802f7d0d",
+    "username": "Google_Tester",
+    "email": "testgoogle@gmail.com",
+    "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=testgoogle%40gmail.com",
+    "role": "user",
+    "createdAt": "2026-09-05T13:05:50.282Z"
+  },
+  {
+    "id": "usr_f7e264d0858f7de5",
+    "username": "Th_c___p_zai",
+    "email": "phanngocthuc.20082024@gmail.com",
+    "googleId": "g_64449507",
+    "avatar": "data:image/jpeg;base64,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",
+    "role": "user",
+    "createdAt": "2026-09-05T13:06:48.835Z"
+  },
+  {
+    "id": "usr_16eabc3d0527fb37",
+    "username": "TH_C_S_C_C_C_L__N_Y_50_L_N",
+    "email": "fwn20935@laoia.com",
+    "googleId": "g_95409399",
+    "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=fwn20935%40laoia.com",
+    "role": "user",
+    "createdAt": "2026-09-05T13:41:02.707Z"
+  },
+  {
+    "id": "usr_e1f8f9a7e969607b",
+    "username": "k_kg_gjhbb",
+    "email": "concactruongnguvay@gmail.com",
+    "googleId": "g_77508192",
+    "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=concactruongnguvay%40gmail.com",
+    "role": "user",
+    "createdAt": "2026-09-05T13:44:18.942Z"
+  },
+  {
+    "id": "usr_10e8d22166cafcd6",
+    "username": "B_o_Ch_u",
+    "email": "dinhthibaochau.bd@gmail.com",
+    "googleId": "g_53788305",
+    "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=dinhthibaochau.bd%40gmail.com",
+    "role": "user",
+    "createdAt": "2026-09-05T14:26:55.888Z"
+  },
+  {
+    "id": "usr_4d64e53e800d5222",
+    "username": "c_i___t_con_m__m_y",
+    "email": "vanbinht808@gmail.com",
+    "googleId": "g_75439277",
+    "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=vanbinht808%40gmail.com",
+    "role": "user",
+    "createdAt": "2026-09-06T07:04:44.797Z"
+  },
+  {
+    "id": "usr_ae0a324b89011e5b",
+    "username": "thk_cha_may",
+    "email": "cac@gmail.com",
+    "googleId": "g_43444564",
+    "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=cac%40gmail.com",
+    "role": "user",
+    "createdAt": "2026-09-12T10:20:06.844Z"
+  },
+  {
+    "id": "usr_64acfb284a59208d",
+    "username": "cac",
+    "email": "thytruongdinhthanh@gmail.com",
+    "googleId": "g_79215630",
+    "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=thytruongdinhthanh%40gmail.com",
+    "role": "user",
+    "createdAt": "2026-09-17T07:37:42.831Z"
+  },
+  {
+    "id": "usr_408f689957225136",
+    "username": "gsdfwu",
+    "email": "gsdfwu@gmail.com",
+    "googleId": "g_56452133",
+    "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=gsdfwu%40gmail.com",
+    "role": "user",
+    "createdAt": "2026-10-06T09:21:42.825Z"
+  },
+  {
+    "id": "usr_1622477321ff9101",
+    "username": "___m__m_y",
+    "email": "concac@gmail.com",
+    "googleId": "g_15891373",
+    "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=concac%40gmail.com",
+    "role": "user",
+    "createdAt": "2026-10-15T05:07:50.593Z"
+  },
+  {
+    "id": "usr_9fec9e54660b8dd6",
+    "username": "helo",
+    "email": "helo@gmail.com",
+    "googleId": "g_11231626",
+    "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=helo%40gmail.com",
+    "role": "user",
+    "createdAt": "2026-10-15T05:08:00.973Z"
+  },
+  {
+    "id": "usr_100abfb112f7f5c4",
+    "username": "h_",
+    "email": "hhuhuhuhuhu@gmail.com",
+    "googleId": "g_93957932",
+    "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=hhuhuhuhuhu%40gmail.com",
+    "role": "user",
+    "createdAt": "2026-10-15T05:15:17.737Z"
+  }
+]

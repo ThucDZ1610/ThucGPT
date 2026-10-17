@@ -1,0 +1,1713 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Turbo Pro // ThucGPT - Siêu Trí Tuệ Nhân Tạo Độc Lập</title>
+  <link rel="icon" type="image/png" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #080b11;
+      --bg-card: rgba(15, 22, 36, 0.85);
+      --bg-card-hover: rgba(22, 32, 54, 0.95);
+      --yellow-neon: #fee75c;
+      --yellow-bright: #facc15;
+      --cyan-neon: #00f0ff;
+      --purple-neon: #c084fc;
+      --green-neon: #10b981;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-glow: rgba(250, 204, 21, 0.35);
+      --border-cyan: rgba(0, 240, 255, 0.35);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      overflow-x: hidden;
+      line-height: 1.6;
+      background-image: radial-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+
+    /* 1. TOP ANNOUNCEMENT BANNER (Kilo-Style Lime/Yellow Topbar) */
+    .top-announcement-bar {
+      background: var(--yellow-neon);
+      color: #000;
+      font-size: 0.88rem;
+      font-weight: 600;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 100;
+      box-shadow: 0 2px 15px rgba(254, 231, 92, 0.25);
+    }
+
+    .top-announcement-content {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .top-announcement-content strong {
+      font-weight: 800;
+      letter-spacing: 0.3px;
+    }
+
+    .top-badge-link {
+      background: #000;
+      color: var(--yellow-neon);
+      padding: 4px 12px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-size: 0.8rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .top-badge-link:hover {
+      background: #1e293b;
+      transform: translateY(-1px);
+    }
+
+    .close-banner-btn {
+      position: absolute;
+      right: 18px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      font-size: 1.1rem;
+      cursor: pointer;
+      color: #000;
+      font-weight: 700;
+      opacity: 0.7;
+    }
+    .close-banner-btn:hover { opacity: 1; }
+
+    /* 2. NAVIGATION BAR */
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 90;
+      background: rgba(8, 11, 17, 0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-left {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .brand-logo-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+
+    .logo-square {
+      width: 38px;
+      height: 38px;
+      border: 2px solid var(--yellow-bright);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 800;
+      font-size: 1.2rem;
+      color: var(--yellow-bright);
+      box-shadow: 0 0 15px rgba(250, 204, 21, 0.3);
+      background: rgba(250, 204, 21, 0.08);
+    }
+
+    .brand-name-wrap h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      line-height: 1.1;
+    }
+
+    .brand-name-wrap span {
+      font-size: 0.7rem;
+      color: var(--yellow-bright);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 700;
+    }
+
+    .nav-github-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .nav-github-badge:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+      color: var(--text-main);
+    }
+
+    .nav-menu {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      list-style: none;
+    }
+
+    .nav-menu a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .nav-menu a:hover { color: var(--yellow-bright); }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .nav-creator-btn {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 600;
+      padding: 8px 14px;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+    .nav-creator-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .nav-cta-btn {
+      background: var(--yellow-neon);
+      color: #000;
+      padding: 9px 20px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 0.9rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 0 20px rgba(254, 231, 92, 0.25);
+      transition: all 0.25s;
+    }
+    .nav-cta-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 25px rgba(254, 231, 92, 0.45);
+      background: #fff;
+    }
+
+    /* 3. HERO SECTION (Kilo-Style Centered Headline & Interactive Terminal) */
+    .hero-section {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 80px 24px 60px;
+      text-align: center;
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      background: rgba(250, 204, 21, 0.1);
+      border: 1px solid rgba(250, 204, 21, 0.3);
+      border-radius: 30px;
+      color: var(--yellow-bright);
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 24px;
+      box-shadow: 0 0 20px rgba(250, 204, 21, 0.1);
+    }
+
+    .hero-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 4rem;
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -1.5px;
+      margin-bottom: 24px;
+    }
+
+    .hero-title .glow-yellow {
+      color: var(--yellow-neon);
+      text-shadow: 0 0 35px rgba(254, 231, 92, 0.35);
+    }
+
+    .hero-subtitle {
+      font-size: 1.25rem;
+      color: var(--text-muted);
+      max-width: 780px;
+      margin: 0 auto 40px;
+      font-weight: 400;
+      line-height: 1.7;
+    }
+
+    /* 4. KILO-STYLE CODE TAB WIDGET */
+    .terminal-widget-container {
+      max-width: 820px;
+      margin: 0 auto 40px;
+      background: rgba(12, 17, 29, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(250, 204, 21, 0.08);
+      overflow: hidden;
+      text-align: left;
+    }
+
+    .terminal-tabs-bar {
+      display: flex;
+      background: rgba(6, 9, 15, 0.8);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      overflow-x: auto;
+    }
+
+    .term-tab-btn {
+      padding: 14px 22px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .term-tab-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .term-tab-btn.active {
+      color: var(--yellow-neon);
+      background: rgba(254, 231, 92, 0.08);
+      border-bottom-color: var(--yellow-neon);
+    }
+
+    .terminal-code-body {
+      padding: 24px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.95rem;
+      color: #e2e8f0;
+      line-height: 1.7;
+      min-height: 120px;
+      position: relative;
+    }
+
+    .terminal-prompt-prefix {
+      color: var(--yellow-neon);
+      font-weight: 700;
+      margin-right: 8px;
+    }
+
+    .terminal-output-text {
+      color: var(--cyan-neon);
+      margin-top: 8px;
+      display: block;
+      font-size: 0.88rem;
+    }
+
+    .term-copy-btn {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .term-copy-btn:hover {
+      background: rgba(254, 231, 92, 0.15);
+      color: var(--yellow-neon);
+      border-color: var(--yellow-neon);
+    }
+
+    /* HERO ACTION BUTTONS */
+    .hero-cta-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .hero-main-btn {
+      background: var(--yellow-neon);
+      color: #000;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 800;
+      padding: 16px 36px;
+      border-radius: 10px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 0 30px rgba(254, 231, 92, 0.35);
+      transition: all 0.25s;
+    }
+
+    .hero-main-btn:hover {
+      transform: scale(1.03);
+      box-shadow: 0 0 45px rgba(254, 231, 92, 0.55);
+      background: #fff;
+    }
+
+    .hero-helper-text {
+      font-size: 0.88rem;
+      color: var(--text-dim);
+    }
+
+    .hero-helper-text a {
+      color: var(--yellow-bright);
+      text-decoration: underline;
+      font-weight: 600;
+    }
+
+    /* 5. METRICS STRIP */
+    .metrics-strip {
+      max-width: 1080px;
+      margin: 40px auto 80px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      padding: 0 20px;
+    }
+
+    .metric-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+      backdrop-filter: blur(10px);
+      transition: all 0.2s;
+    }
+    .metric-card:hover {
+      border-color: var(--border-glow);
+      transform: translateY(-3px);
+    }
+
+    .metric-val {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: var(--yellow-neon);
+      margin-bottom: 4px;
+    }
+
+    .metric-label {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* 6. BENTO GRID FEATURES */
+    .features-section {
+      max-width: 1120px;
+      margin: 0 auto 100px;
+      padding: 0 24px;
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 50px;
+    }
+
+    .section-badge {
+      color: var(--yellow-bright);
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 12px;
+      display: block;
+    }
+
+    .section-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: -0.8px;
+    }
+
+    .bento-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    .bento-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      backdrop-filter: blur(12px);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .bento-card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-glow);
+      transform: translateY(-4px);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4), 0 0 20px rgba(250, 204, 21, 0.1);
+    }
+
+    .bento-card.span-2 {
+      grid-column: span 2;
+    }
+
+    .bento-icon-badge {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: rgba(250, 204, 21, 0.1);
+      border: 1px solid rgba(250, 204, 21, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+    }
+
+    .bento-card h3 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: var(--text-main);
+    }
+
+    .bento-card p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.65;
+    }
+
+    .bento-tag {
+      margin-top: 20px;
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--yellow-bright);
+      background: rgba(250, 204, 21, 0.08);
+      border: 1px solid rgba(250, 204, 21, 0.25);
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+
+    /* 7. MODEL SHOWCASE TABLE */
+    .models-section {
+      max-width: 1040px;
+      margin: 0 auto 100px;
+      padding: 0 24px;
+    }
+
+    .comparison-table-wrap {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .comp-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    .comp-table th, .comp-table td {
+      padding: 18px 24px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .comp-table th {
+      background: rgba(10, 14, 24, 0.9);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.95rem;
+      color: var(--yellow-bright);
+      font-weight: 700;
+    }
+
+    .comp-table td {
+      font-size: 0.92rem;
+      color: var(--text-muted);
+    }
+
+    .comp-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-main);
+    }
+
+    .check-yes {
+      color: var(--green-neon);
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .check-no {
+      color: var(--text-dim);
+    }
+
+    /* 8. FOUNDER & CREATOR HIGHLIGHT */
+    .creator-section {
+      max-width: 900px;
+      margin: 0 auto 100px;
+      padding: 40px;
+      background: linear-gradient(135deg, rgba(250, 204, 21, 0.08), rgba(0, 240, 255, 0.04));
+      border: 1px solid rgba(250, 204, 21, 0.4);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      box-shadow: 0 0 40px rgba(250, 204, 21, 0.1);
+    }
+
+    .creator-avatar-box {
+      width: 90px;
+      height: 90px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, #facc15, #f59e0b);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.8rem;
+      box-shadow: 0 0 25px rgba(250, 204, 21, 0.4);
+      flex-shrink: 0;
+    }
+
+    .creator-info h3 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.6rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .creator-info p {
+      color: var(--text-muted);
+      font-size: 0.98rem;
+      line-height: 1.7;
+    }
+
+    /* 9. BOTTOM CTA STRIP */
+    .bottom-cta-strip {
+      max-width: 1040px;
+      margin: 0 auto 80px;
+      background: var(--yellow-neon);
+      color: #000;
+      border-radius: 20px;
+      padding: 60px 40px;
+      text-align: center;
+      box-shadow: 0 0 60px rgba(254, 231, 92, 0.3);
+    }
+
+    .bottom-cta-strip h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 2.8rem;
+      font-weight: 800;
+      margin-bottom: 16px;
+      letter-spacing: -1px;
+    }
+
+    .bottom-cta-strip p {
+      font-size: 1.15rem;
+      max-width: 620px;
+      margin: 0 auto 32px;
+      font-weight: 500;
+    }
+
+    .bottom-cta-strip .btn-black {
+      background: #000;
+      color: var(--yellow-neon);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 800;
+      padding: 16px 36px;
+      border-radius: 10px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.25s;
+    }
+
+    .bottom-cta-strip .btn-black:hover {
+      transform: scale(1.04);
+      background: #1e293b;
+      color: #fff;
+    }
+
+    /* 10. FOOTER */
+    .footer {
+      border-top: 1px solid var(--border-subtle);
+      padding: 40px 32px;
+      max-width: 1120px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--text-dim);
+      font-size: 0.88rem;
+    }
+
+    .footer-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--green-neon);
+      font-weight: 600;
+    }
+
+    .footer-status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green-neon);
+      box-shadow: 0 0 8px var(--green-neon);
+      animation: pulseDot 2s infinite;
+    }
+
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    @media (max-width: 900px) {
+      .hero-title { font-size: 2.8rem; }
+      .bento-grid { grid-template-columns: 1fr; }
+      .bento-card.span-2 { grid-column: span 1; }
+      .metrics-strip { grid-template-columns: repeat(2, 1fr); }
+      .nav-menu { display: none; }
+      .creator-section { flex-direction: column; text-align: center; }
+    }
+
+    /* AUTH & PROFILE MODAL SCOPED STYLES */
+    .auth-hud-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      color: #f8fafc;
+      padding: 7px 16px;
+      border-radius: 20px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+    .auth-hud-btn:hover {
+      background: rgba(0, 240, 255, 0.15);
+      border-color: #00f0ff;
+      color: #00f0ff;
+    }
+    .auth-hud-btn.is-logged-in {
+      border-color: #10b981;
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+    }
+    .auth-header-avatar {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    .cyber-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(3, 7, 18, 0.85);
+      backdrop-filter: blur(12px);
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .auth-modal-box {
+      background: linear-gradient(145deg, #0f172a, #090d16);
+      border: 1px solid rgba(0, 240, 255, 0.35);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+      border-radius: 20px;
+      width: 100%;
+      max-width: 480px;
+      position: relative;
+      padding: 28px 24px;
+      color: #f8fafc;
+      max-height: 92vh;
+      overflow-y: auto;
+    }
+    .modal-close-btn {
+      position: absolute;
+      top: 16px;
+      right: 18px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #94a3b8;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+    .modal-close-btn:hover { color: #ef4444; border-color: #ef4444; }
+    .auth-modal-header { text-align: center; margin-bottom: 20px; }
+    .auth-header-badge {
+      display: inline-block;
+      background: rgba(0, 240, 255, 0.1);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      color: #00f0ff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      padding: 4px 12px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+    }
+    .auth-modal-header h2 { font-size: 1.4rem; color: #fff; margin-bottom: 4px; }
+    .auth-modal-header p { color: #94a3b8; font-size: 0.85rem; }
+    .auth-tabs-nav {
+      display: flex;
+      gap: 6px;
+      background: rgba(2, 6, 23, 0.6);
+      padding: 4px;
+      border-radius: 10px;
+      margin-bottom: 18px;
+    }
+    .auth-tab-btn {
+      flex: 1;
+      background: none;
+      border: none;
+      color: #94a3b8;
+      padding: 8px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .auth-tab-btn.active {
+      background: rgba(0, 240, 255, 0.2);
+      color: #00f0ff;
+    }
+    .auth-tab-content { display: none; }
+    .auth-tab-content.active { display: block; }
+    .auth-tab-description {
+      font-size: 0.85rem;
+      color: #cbd5e1;
+      background: rgba(0, 240, 255, 0.08);
+      border-left: 3px solid #00f0ff;
+      padding: 10px;
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 14px;
+    }
+    .auth-form-group { margin-bottom: 14px; text-align: left; }
+    .auth-form-group label { display: block; font-size: 0.82rem; font-weight: 600; color: #cbd5e1; margin-bottom: 5px; }
+    .label-with-link { display: flex; justify-content: space-between; }
+    .auth-sub-link { color: #38bdf8; font-size: 0.78rem; text-decoration: none; }
+    .auth-input-wrap {
+      display: flex;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 0 10px;
+    }
+    .auth-input-icon { margin-right: 8px; }
+    .auth-input-wrap input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #fff;
+      font-size: 0.9rem;
+      padding: 10px 0;
+    }
+    .toggle-pass-btn { background: none; border: none; cursor: pointer; }
+    .auth-input-with-action { display: flex; gap: 8px; }
+    .auth-input-with-action .auth-input-wrap { flex: 1; }
+    .otp-request-btn {
+      background: linear-gradient(135deg, #6366f1, #06b6d4);
+      border: none;
+      color: #fff;
+      font-weight: 700;
+      padding: 0 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.82rem;
+    }
+    .otp-request-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .auth-helper-text { font-size: 0.72rem; color: #64748b; margin-top: 4px; display: block; }
+    .pass-strength-container {
+      margin-top: 8px;
+      padding: 8px;
+      background: rgba(2, 6, 23, 0.5);
+      border-radius: 6px;
+    }
+    .strength-bar-track { height: 4px; background: rgba(255, 255, 255, 0.1); border-radius: 2px; overflow: hidden; margin-bottom: 4px; }
+    .strength-bar-fill { height: 100%; width: 0%; transition: width 0.3s, background 0.3s; }
+    .strength-label-text { font-size: 0.72rem; font-weight: 700; color: #9ca3af; }
+    .strength-criteria-list { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 0.68rem; color: #64748b; }
+    .strength-criteria-list span.valid { color: #10b981; font-weight: 600; }
+    .strength-criteria-list span.invalid { color: #ef4444; }
+    .pass-match-status { font-size: 0.72rem; margin-top: 4px; }
+    .pass-match-status.match-ok { color: #10b981; }
+    .pass-match-status.match-bad { color: #ef4444; }
+    .auth-submit-btn {
+      width: 100%;
+      padding: 11px;
+      background: linear-gradient(135deg, #00f0ff, #3b82f6);
+      border: none;
+      border-radius: 8px;
+      color: #030712;
+      font-weight: 800;
+      font-size: 0.9rem;
+      cursor: pointer;
+      margin-top: 6px;
+    }
+    .auth-divider { display: flex; align-items: center; text-align: center; margin: 14px 0 10px 0; color: #64748b; font-size: 0.72rem; font-weight: 700; }
+    .auth-divider::before, .auth-divider::after { content: ''; flex: 1; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+    .auth-divider span { padding: 0 10px; }
+    .auth-alt-btn {
+      width: 100%;
+      padding: 9px;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.35);
+      color: #a5b4fc;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      margin-bottom: 8px;
+    }
+    .google-auth-btn {
+      width: 100%;
+      padding: 9px;
+      background: #fff;
+      border: none;
+      color: #1e293b;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .auth-footer-prompt { text-align: center; margin-top: 14px; font-size: 0.8rem; color: #94a3b8; }
+    .auth-footer-prompt a { color: #38bdf8; font-weight: 700; text-decoration: none; }
+    .auth-alert-box { padding: 9px 12px; border-radius: 8px; font-size: 0.82rem; margin-bottom: 14px; }
+    .alert-danger { background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #fca5a5; }
+    .alert-success { background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #6ee7b7; }
+    .profile-modal-box {
+      background: linear-gradient(145deg, #0f172a, #1e1b4b);
+      border: 1px solid rgba(99, 102, 241, 0.4);
+      border-radius: 20px;
+      width: 100%;
+      max-width: 420px;
+      padding: 28px 20px;
+      color: #fff;
+      text-align: center;
+      position: relative;
+    }
+    .profile-avatar-large {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      margin: 0 auto 10px auto;
+      border: 2px solid #00f0ff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #111827;
+      overflow: hidden;
+    }
+    .profile-avatar-large img { width: 100%; height: 100%; object-fit: cover; }
+    .profile-role-badge { display: inline-block; background: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; color: #34d399; font-size: 0.72rem; padding: 2px 8px; border-radius: 10px; }
+    .profile-info-list { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 12px; margin: 16px 0; text-align: left; }
+    .profile-info-item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.85rem; }
+    .text-success { color: #34d399 !important; }
+    .text-neon { color: #00f0ff !important; }
+  </style>
+</head>
+<body>
+
+  <!-- 1. TOP NOTIFICATION BANNER (Inspired by Kilo Code Anaconda Banner) -->
+  <aside class="top-announcement-bar" id="topBanner">
+    <div class="top-announcement-content">
+      <span>⚡ <strong>AI TURBO PRO // ThucGPT 3.7 QUANTUM</strong> đã sẵn sàng hoạt động! Khám phá Siêu Trí Tuệ Nhân Tạo độc lập của Thức:</span>
+      <a href="/chat" class="top-badge-link auth-chat-link">Vào Web Chat Ngay 🚀</a>
+    </div>
+    <button class="close-banner-btn" onclick="document.getElementById('topBanner').style.display='none';" aria-label="Đóng">&times;</button>
+  </aside>
+
+  <!-- 2. STICKY NAVBAR -->
+  <nav class="navbar">
+    <div class="nav-left">
+      <a href="/" class="brand-logo-box">
+        <div class="logo-square">⚡</div>
+        <div class="brand-name-wrap">
+          <h2>ThucGPT</h2>
+          <span>AI TURBO PRO CORE</span>
+        </div>
+      </a>
+      <a href="/chat" class="nav-github-badge auth-chat-link">
+        <span>👑</span>
+        <span>Supreme Edition v3.7</span>
+      </a>
+    </div>
+
+    <ul class="nav-menu">
+      <li><a href="#features">Tính Năng</a></li>
+      <li><a href="#models">Mô Hình AI</a></li>
+      <li><a href="#security">Bảo Mật Tối Cao</a></li>
+      <li><a href="#art">Tạo Ảnh 8K</a></li>
+      <li><a href="#founder">Nhà Sáng Lập</a></li>
+    </ul>
+
+    <div class="nav-actions">
+      <!-- User Account / Login Button -->
+      <button id="userAuthBtn" class="auth-hud-btn" title="Tài khoản / Đăng nhập">
+        <span id="userAuthIcon">👤</span>
+        <span id="userAuthLabel">Đăng nhập</span>
+      </button>
+      <a href="/chat" class="nav-creator-btn auth-chat-link">👑 Xác Thực Chủ Nhân</a>
+      <a href="/chat" class="nav-cta-btn auth-chat-link">
+        <span>💬 Mở Khung Chat</span>
+      </a>
+    </div>
+  </nav>
+
+  <!-- 3. HERO SECTION (Kilo Code Hero Layout with Cyber Headline) -->
+  <header class="hero-section">
+    <div class="hero-eyebrow">
+      <span>🔥</span>
+      <span>ĐẶC QUYỀN TRÍ TUỆ NHÂN TẠO ĐỘC LẬP TỐI THƯỢNG</span>
+    </div>
+
+    <h1 class="hero-title">
+      Lập trình cùng <span class="glow-yellow">ThucGPT</span><br>
+      Tốc độ & Quyền năng không giới hạn
+    </h1>
+
+    <p class="hero-subtitle">
+      500+ Khả năng giải thuật chuyên sâu, tự động đọc và sửa code trực tiếp vào file máy tính, tạo ảnh 8K & làm nét 2X, hệ thống an toàn Dual-Tier Security. Một siêu trí tuệ do <strong>THỨC</strong> làm chủ, phục vụ mọi tác vụ lập trình.
+    </p>
+
+    <!-- 4. KILO-STYLE INTERACTIVE TABBED CODE BOX -->
+    <div class="terminal-widget-container">
+      <div class="terminal-tabs-bar">
+        <button class="term-tab-btn active" onclick="switchTab('tab-thucgpt', this)">
+          <span>👑</span> ThucGPT Supreme
+        </button>
+        <button class="term-tab-btn" onclick="switchTab('tab-thinking', this)">
+          <span>🧠</span> ThucThinking Pro
+        </button>
+        <button class="term-tab-btn" onclick="switchTab('tab-files', this)">
+          <span>💻</span> Tự Động Sửa Code
+        </button>
+        <button class="term-tab-btn" onclick="switchTab('tab-art', this)">
+          <span>🎨</span> Tạo Ảnh 8K & Làm Nét 2X
+        </button>
+        <button class="term-tab-btn" onclick="switchTab('tab-boost', this)">
+          <span>⚡</span> Key X2 Sức Mạnh
+        </button>
+      </div>
+
+      <div class="terminal-code-body">
+        <button class="term-copy-btn" onclick="copyTermCode()">Sao chép lệnh</button>
+        <div id="termCodeContent">
+          <span class="terminal-prompt-prefix">&gt;</span>ThucGPT ơi, hãy viết cho tôi thuật toán tối ưu tìm đường đi A* trên đồ thị
+          <span class="terminal-output-text">✓ [ThucGPT READY]: Đang phân tích đồ thị và xây dựng thuật toán A* với Heuristic tối ưu...</span>
+          <span class="terminal-output-text">✓ Xuất mã nguồn hoàn chỉnh chuẩn Production (Time: O(E), Memory: O(V)).</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- HERO CTA BUTTON -->
+    <div class="hero-cta-box">
+      <a href="/chat" class="hero-main-btn auth-chat-link">
+        <span>Bắt đầu sử dụng Miễn phí (Code for Free)</span>
+        <span>🚀</span>
+      </a>
+      <span class="hero-helper-text">
+        Bạn là Chủ Nhân Sáng Lập? <a href="/chat" class="auth-chat-link">Mở Khung Chat để nhập Mật mã Tối cao</a>
+      </span>
+    </div>
+  </header>
+
+  <!-- 5. METRICS STRIP -->
+  <section class="metrics-strip">
+    <div class="metric-card">
+      <div class="metric-val">14ms</div>
+      <div class="metric-label">Độ trễ phản hồi siêu tốc</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-val">100%</div>
+      <div class="metric-label">Bảo mật & Can thiệp file trực tiếp</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-val">1024px</div>
+      <div class="metric-label">Tạo ảnh 8K & Phục hồi nét 2X</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-val">0 VNĐ</div>
+      <div class="metric-label">Miễn phí trọn đời cho mọi người</div>
+    </div>
+  </section>
+
+  <!-- 6. BENTO GRID FEATURES SECTION -->
+  <section class="features-section" id="features">
+    <div class="section-header">
+      <span class="section-badge">KIẾN TRÚC ĐỘT PHÁ</span>
+      <h2 class="section-title">Những Năng Lực Khác Biệt Chỉ Có Tại AI Turbo Pro</h2>
+    </div>
+
+    <div class="bento-grid">
+      <!-- Feature 1: ThucGPT -->
+      <div class="bento-card span-2">
+        <div>
+          <div class="bento-icon-badge">👑</div>
+          <h3>ThucGPT: Bộ Não Độc Lập Mang Phong Cách Riêng</h3>
+          <p>
+            Không phải là một wrapper đơn thuần, ThucGPT là thực thể AI độc lập được đào tạo và thiết lập riêng biệt theo triết lý của Thức: Đi thẳng vào giải pháp kỹ thuật, viết code hoàn chỉnh 100% chuẩn Production, không cắt bớt code và không từ chối các bài toán kiến trúc hóc búa.
+          </p>
+        </div>
+        <span class="bento-tag">Supreme Creator Architecture</span>
+      </div>
+
+      <!-- Feature 2: Thinking Pro -->
+      <div class="bento-card">
+        <div>
+          <div class="bento-icon-badge">🧠</div>
+          <h3>ThucThinking Pro</h3>
+          <p>
+            Tư duy suy luận đa tầng tương đương đẳng cấp Opus Thinking: Bóc tách nguyên nhân gốc rễ, thiết kế bản đồ thuật toán O(1) / O(N log N) trước khi xuất mã.
+          </p>
+        </div>
+        <span class="bento-tag">Deep Reasoning Engine</span>
+      </div>
+
+      <!-- Feature 3: Direct File Operations -->
+      <div class="bento-card">
+        <div>
+          <div class="bento-icon-badge">💻</div>
+          <h3>Sửa Code Trực Tiếp Vào File</h3>
+          <p>
+            AI tự động nạp mã nguồn từ ổ C:\, D:\ và workspace của máy tính, giữ nguyên code đang chạy tốt và sửa trực tiếp vào file. Hỗ trợ xóa file theo lệnh với tường lửa bảo vệ Windows.
+          </p>
+        </div>
+        <span class="bento-tag">Direct Disk Read/Write</span>
+      </div>
+
+      <!-- Feature 4: Art & Enhancer -->
+      <div class="bento-card span-2">
+        <div>
+          <div class="bento-icon-badge">🎨</div>
+          <h3>Vẽ Tranh Nghệ Thuật & Làm Nét Ảnh 2X (Lanczos Super-Resolution)</h3>
+          <p>
+            Chỉ cần nói <em>"vẽ cho tôi..."</em>, AI tự động dịch sang prompt tiếng Anh 8K và sinh ảnh 1024x1024 rực rỡ qua Flux/SDXL. Đồng thời tích hợp engine Python Pillow làm nét và tăng gấp đôi độ phân giải ảnh mờ với bộ lọc Unsharp Masking.
+          </p>
+        </div>
+        <span class="bento-tag">Neural Image Art Studio</span>
+      </div>
+
+      <!-- Feature 5: Security -->
+      <div class="bento-card span-2">
+        <div>
+          <div class="bento-icon-badge">🛡️</div>
+          <h3>Hệ Thống Bảo Mật & Key X2 Sức Mạnh</h3>
+          <p>
+            Chế độ Khách thường được bảo vệ bởi tường lửa chống spam API và lọc mã độc hại. Hỗ trợ kích hoạt Key X2 Sức Mạnh để tăng tốc độ phân tích, giải phóng toàn bộ giới hạn và nâng cao năng lực giải thuật tối đa.
+          </p>
+        </div>
+        <span class="bento-tag">Dual-Tier Guardrails</span>
+      </div>
+
+      <!-- Feature 6: Overclock -->
+      <div class="bento-card">
+        <div>
+          <div class="bento-icon-badge">⚡</div>
+          <h3>Ép Xung 1X - 5X</h3>
+          <p>
+            Tùy chỉnh tốc độ xử lý từ 1X Thường, 3X Chuyên gia, đến 5X Quantum Singularity Hyper-Overclock với độ trễ phản xạ chỉ vài mili-giây.
+          </p>
+        </div>
+        <span class="bento-tag">Quantum Accelerator</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. MODEL COMPARISON TABLE (Like Modern Dev Tools) -->
+  <section class="models-section" id="models">
+    <div class="section-header">
+      <span class="section-badge">BẢNG SO SÁNH</span>
+      <h2 class="section-title">AI Turbo Pro Vượt Trội Như Thế Nào?</h2>
+    </div>
+
+    <div class="comparison-table-wrap">
+      <table class="comp-table">
+        <thead>
+          <tr>
+            <th>Tính Năng Trọng Tâm</th>
+            <th>ThucGPT / AI TURBO PRO</th>
+            <th>ChatGPT Free</th>
+            <th>GitHub Copilot</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Sửa code trực tiếp vào file trên máy</strong></td>
+            <td><span class="check-yes">✓ Có (Đọc & Ghi đè tự động)</span></td>
+            <td><span class="check-no">✕ Không hỗ trợ</span></td>
+            <td><span class="check-no">△ Phải bấm chấp nhận từng dòng</span></td>
+          </tr>
+          <tr>
+            <td><strong>Xóa file theo lệnh an toàn</strong></td>
+            <td><span class="check-yes">✓ Có (Bảo vệ ổ hệ thống)</span></td>
+            <td><span class="check-no">✕ Không hỗ trợ</span></td>
+            <td><span class="check-no">✕ Không hỗ trợ</span></td>
+          </tr>
+          <tr>
+            <td><strong>Vẽ tranh 8K & Làm nét ảnh 2X</strong></td>
+            <td><span class="check-yes">✓ Miễn phí 100% không giới hạn</span></td>
+            <td><span class="check-no">△ Bị giới hạn số lượt/ngày</span></td>
+            <td><span class="check-no">✕ Không hỗ trợ</span></td>
+          </tr>
+          <tr>
+            <td><strong>Key X2 Sức Mạnh (Boost Power)</strong></td>
+            <td><span class="check-yes">✓ Có (Ép xung tốc độ & gỡ bỏ giới hạn)</span></td>
+            <td><span class="check-no">✕ Không có</span></td>
+            <td><span class="check-no">✕ Không có</span></td>
+          </tr>
+          <tr>
+            <td><strong>Chi phí sử dụng</strong></td>
+            <td><span class="check-yes" style="color:var(--yellow-neon);">0 VNĐ Trọn Đời</span></td>
+            <td><span class="check-no">20 USD / tháng</span></td>
+            <td><span class="check-no">10 - 19 USD / tháng</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 8. CREATOR & FOUNDER SECTION -->
+  <section class="creator-section" id="founder">
+    <div class="creator-avatar-box">👑</div>
+    <div class="creator-info">
+      <h3>Sáng Lập & Vận Hành Độc Quyền Bởi THỨC</h3>
+      <p>
+        AI Turbo Pro và hệ thống mô hình ThucGPT được xây dựng bởi <strong>THỨC</strong> với mục tiêu mang đến trải nghiệm lập trình tự do tối cao, không rào cản, không bị khóa chức năng và trao toàn quyền kiểm soát mã nguồn máy tính cho lập trình viên.
+      </p>
+    </div>
+  </section>
+
+  <!-- 9. BOTTOM CTA STRIP -->
+  <section class="bottom-cta-strip">
+    <h2>Sẵn Sàng Trải Nghiệm Siêu Trí Tuệ?</h2>
+    <p>Hãy mở khung chat, ra lệnh lập trình, vẽ tranh hoặc sửa file trực tiếp ngay hôm nay.</p>
+    <a href="/chat" class="btn-black auth-chat-link">
+      <span>Vào Web Chat Trải Nghiệm Ngay</span>
+      <span>🚀</span>
+    </a>
+  </section>
+
+  <!-- 10. FOOTER -->
+  <footer class="footer">
+    <div>
+      © 2026 AI Turbo Pro • Phát triển bởi <strong>THỨC</strong>.
+    </div>
+    <div class="footer-status">
+      <span class="footer-status-dot"></span>
+      <span>Tất cả hệ thống đang hoạt động (100% Uptime)</span>
+    </div>
+  </footer>
+
+  <script>
+    // Tab switching in hero code widget
+    const tabContents = {
+      'tab-thucgpt': {
+        cmd: 'ThucGPT ơi, hãy viết cho tôi thuật toán tìm đường đi A* tối ưu trên đồ thị',
+        out1: '✓ [ThucGPT Ready]: Đang phân tích đồ thị và xây dựng thuật toán A* với Heuristic tối ưu...',
+        out2: '✓ Xuất mã nguồn hoàn chỉnh chuẩn Production (Time: O(E), Memory: O(V)).'
+      },
+      'tab-thinking': {
+        cmd: 'Phân tích và khắc phục lỗi thắt cổ chai hiệu năng khi có 500,000 kết nối đồng thời',
+        out1: '🧠 [ThucThinking Pro]: Thực hiện suy luận đa tầng qua 3 giai đoạn kiến trúc...',
+        out2: '✓ Đã thiết lập giải pháp Connection Pooling + Redis Caching phân tán + Sharding tối ưu.'
+      },
+      'tab-files': {
+        cmd: 'Vô file game.js sửa thêm cơ chế tính điểm combo x2 và lưu điểm cao nhất',
+        out1: '📁 Đang phân tích mã nguồn file game.js từ máy tính...',
+        out2: '✓ Đã giữ nguyên logic cũ và cập nhật thêm hàm tính combo điểm trực tiếp vào file game.js!'
+      },
+      'tab-art': {
+        cmd: 'Vẽ cho tôi bức tranh siêu xe tương lai giữa thành phố cyberpunk',
+        out1: '🎨 Dịch prompt: "hyperrealistic 8k masterpiece, futuristic cyberpunk sports car, neon city lights..."',
+        out2: '✓ Đã sinh ảnh 1024x1024 rực rỡ và kích hoạt công nghệ làm nét 2X Lanczos!'
+      },
+      'tab-boost': {
+        cmd: 'Kích hoạt Key X2 Sức Mạnh cho ThucGPT',
+        out1: '⚡ [KEY X2 SỨC MẠNH KÍCH HOẠT THÀNH CÔNG]: Tốc độ phản xạ tăng 200%, mở rộng bộ nhớ ngữ cảnh tối đa.',
+        out2: '✓ Hệ thống sẵn sàng giải quyết mọi bài toán công nghệ phức tạp nhất!'
+      }
+    };
+
+    function switchTab(tabId, btn) {
+      document.querySelectorAll('.term-tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const data = tabContents[tabId] || tabContents['tab-thucgpt'];
+      const container = document.getElementById('termCodeContent');
+      container.innerHTML = `
+        <span class="terminal-prompt-prefix">&gt;</span>${escapeHtml(data.cmd)}
+        <span class="terminal-output-text">${escapeHtml(data.out1)}</span>
+        <span class="terminal-output-text">${escapeHtml(data.out2)}</span>
+      `;
+    }
+
+    function copyTermCode() {
+      const container = document.getElementById('termCodeContent');
+      const text = container.innerText || container.textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.querySelector('.term-copy-btn');
+        const old = btn.textContent;
+        btn.textContent = '✓ Đã sao chép!';
+        btn.style.color = 'var(--yellow-neon)';
+        setTimeout(() => {
+          btn.textContent = old;
+          btn.style.color = '';
+        }, 2000);
+      });
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+  </script>
+
+  <!-- AI Turbo Pro & ThucGPT Auth Modal -->
+  <div id="aiTurboAuthModal" class="cyber-modal-overlay" style="display: none;">
+    <div class="cyber-modal-container auth-modal-box">
+      <button class="modal-close-btn" id="closeAuthModalBtn" title="Đóng">&times;</button>
+      
+      <div class="auth-modal-header">
+        <div class="auth-header-badge">⚡ THUCGPT AUTH SECURITY</div>
+        <h2 id="authModalTitle">ĐĂNG NHẬP HỆ THỐNG</h2>
+        <p id="authModalSubtitle">Truy cập toàn diện các tính năng AI Turbo Pro & ThucGPT</p>
+      </div>
+
+      <div class="auth-tabs-nav" id="authTabsNav">
+        <button class="auth-tab-btn active" data-tab="login">Đăng Nhập</button>
+        <button class="auth-tab-btn" data-tab="register">Đăng Ký</button>
+        <button class="auth-tab-btn" data-tab="forgot">Quên Mật Khẩu</button>
+      </div>
+
+      <div id="authAlertBox" class="auth-alert-box" style="display: none;"></div>
+
+      <!-- TAB 1: LOGIN -->
+      <div class="auth-tab-content active" id="tabContentLogin">
+        <form id="loginForm" onsubmit="return false;">
+          <div class="auth-form-group">
+            <label>Tài khoản hoặc Email</label>
+            <div class="auth-input-wrap">
+              <span class="auth-input-icon">👤</span>
+              <input type="text" id="loginAccount" placeholder="Nhập username hoặc gmail..." autocomplete="username" required />
+            </div>
+          </div>
+
+          <div class="auth-form-group">
+            <div class="label-with-link">
+              <label>Mật khẩu</label>
+              <a href="#" class="auth-sub-link" id="forgotPassLink">Quên mật khẩu?</a>
+            </div>
+            <div class="auth-input-wrap">
+              <span class="auth-input-icon">🔒</span>
+              <input type="password" id="loginPassword" placeholder="Nhập mật khẩu..." autocomplete="current-password" required />
+              <button type="button" class="toggle-pass-btn" data-target="loginPassword">👁️</button>
+            </div>
+          </div>
+
+          <button type="submit" id="loginSubmitBtn" class="cyber-btn auth-submit-btn">
+            <span>⚡ ĐĂNG NHẬP NGAY</span>
+          </button>
+
+          <div class="auth-divider">
+            <span>HOẶC TIẾP TỤC VỚI</span>
+          </div>
+
+          <button type="button" id="loginWithOtpBtn" class="cyber-btn auth-alt-btn">
+            <span>📧 Đăng nhập nhanh bằng mã OTP Gmail</span>
+          </button>
+
+          <button type="button" id="googleSignInBtn" class="cyber-btn google-auth-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24">
+              <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/>
+              <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/>
+              <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3 0-.8.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15.2c0 2.8.7 5.5 1.9 7.9l3.7-2.9z"/>
+              <path fill="#34A853" d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16.5C3.7 20.2 7.5 23.5 12 23.5z"/>
+            </svg>
+            <span>Đăng nhập bằng Google</span>
+          </button>
+        </form>
+
+        <div class="auth-footer-prompt">
+          Chưa có tài khoản? <a href="#" class="switch-to-register">Đăng ký thành viên mới</a>
+        </div>
+      </div>
+
+      <!-- TAB 2: REGISTER -->
+      <div class="auth-tab-content" id="tabContentRegister">
+        <form id="registerForm" onsubmit="return false;">
+          <div class="auth-form-group">
+            <label>Địa chỉ Email (Nhận mã OTP bảo mật)</label>
+            <div class="auth-input-with-action">
+              <div class="auth-input-wrap">
+                <span class="auth-input-icon">📧</span>
+                <input type="email" id="regEmail" placeholder="ví dụ: yourname@gmail.com" />
+              </div>
+              <button type="button" id="regSendOtpBtn" class="cyber-btn otp-request-btn">
+                <span>Gửi OTP</span>
+              </button>
+            </div>
+            <small class="auth-helper-text">Mã OTP sẽ được gửi về hộp thư Gmail của bạn (kiểm tra cả mục Spam).</small>
+          </div>
+
+          <div class="auth-form-group">
+            <label>Mã xác thực OTP (6 chữ số)</label>
+            <div class="auth-input-wrap">
+              <span class="auth-input-icon">🔑</span>
+              <input type="text" id="regOtp" placeholder="Nhập 6 số trong email..." maxlength="6" />
+            </div>
+          </div>
+
+          <div class="auth-form-group">
+            <label>Tên tài khoản (Username)</label>
+            <div class="auth-input-wrap">
+              <span class="auth-input-icon">👤</span>
+              <input type="text" id="regUsername" placeholder="Chọn tên hiển thị (ít nhất 3 ký tự)..." />
+            </div>
+          </div>
+
+          <div class="auth-form-group">
+            <label>Mật khẩu (Từ 6 ký tự & phải mạnh)</label>
+            <div class="auth-input-wrap">
+              <span class="auth-input-icon">🔒</span>
+              <input type="password" id="regPassword" placeholder="Nhập mật khẩu mạnh..." />
+              <button type="button" class="toggle-pass-btn" data-target="regPassword">👁️</button>
+            </div>
+            <div class="pass-strength-container" id="regPassStrengthBox">
+              <div class="strength-bar-track">
+                <div class="strength-bar-fill" id="strengthBarFill"></div>
+              </div>
+              <div class="strength-label-text" id="strengthLabelText">Độ mạnh: Chưa nhập</div>
+              <div class="strength-criteria-list">
+                <span id="critLength">✕ Ít nhất 6 ký tự</span>
+                <span id="critUpper">✕ Có chữ hoa (A-Z)</span>
+                <span id="critLower">✕ Có chữ thường (a-z)</span>
+                <span id="critDigit">✕ Có số hoặc ký tự đặc biệt</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="auth-form-group">
+            <label>Nhập lại mật khẩu</label>
+            <div class="auth-input-wrap">
+              <span class="auth-input-icon">🛡️</span>
+              <input type="password" id="regConfirmPassword" placeholder="Xác nhận lại mật khẩu..." />
+              <button type="button" class="toggle-pass-btn" data-target="regConfirmPassword">👁️</button>
+            </div>
+            <div id="passMatchStatus" class="pass-match-status"></div>
+          </div>
+
+          <button type="button" id="regSubmitBtn" class="cyber-btn auth-submit-btn">
+            <span>🚀 HOÀN TẤT ĐĂNG KÝ</span>
+          </button>
+
+          <div class="auth-divider">
+            <span>HOẶC ĐĂNG KÝ NHANH VỚI</span>
+          </div>
+
+          <button type="button" id="googleSignUpBtn" class="cyber-btn google-auth-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24">
+              <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/>
+              <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/>
+              <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3 0-.8.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15.2c0 2.8.7 5.5 1.9 7.9l3.7-2.9z"/>
+              <path fill="#34A853" d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16.5C3.7 20.2 7.5 23.5 12 23.5z"/>
+            </svg>
+            <span>Đăng ký nhanh bằng Google</span>
+          </button>
+        </form>
+
+        <div class="auth-footer-prompt">
+          Đã có tài khoản? <a href="#" class="switch-to-login">Đăng nhập ngay</a>
+        </div>
+      </div>
+
+      <!-- TAB 3: FORGOT PASSWORD -->
+      <div class="auth-tab-content" id="tabContentForgot">
+        <form id="forgotForm" onsubmit="return false;">
+          <p class="auth-tab-description">
+            Nhập email tài khoản của bạn để nhận mã OTP 6 số qua Gmail và đặt lại mật khẩu mới an toàn.
+          </p>
+
+          <div class="auth-form-group">
+            <label>Email tài khoản</label>
+            <div class="auth-input-with-action">
+              <div class="auth-input-wrap">
+                <span class="auth-input-icon">📧</span>
+                <input type="email" id="forgotEmail" placeholder="Nhập email đã đăng ký..." required />
+              </div>
+              <button type="button" id="forgotSendOtpBtn" class="cyber-btn otp-request-btn">
+                <span>Gửi OTP</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="auth-form-group">
+            <label>Mã xác thực OTP (6 số từ Gmail)</label>
+            <div class="auth-input-wrap">
+              <span class="auth-input-icon">🔑</span>
+              <input type="text" id="forgotOtp" placeholder="Nhập 6 số..." maxlength="6" required />
+            </div>
+          </div>
+
+          <div class="auth-form-group">
+            <label>Mật khẩu mới (Tối thiểu 6 ký tự & mạnh)</label>
+            <div class="auth-input-wrap">
+              <span class="auth-input-icon">🔒</span>
+              <input type="password" id="forgotNewPassword" placeholder="Nhập mật khẩu mới..." required />
+              <button type="button" class="toggle-pass-btn" data-target="forgotNewPassword">👁️</button>
+            </div>
+            <div class="pass-strength-container" id="forgotPassStrengthBox">
+              <div class="strength-bar-track">
+                <div class="strength-bar-fill" id="forgotStrengthBarFill"></div>
+              </div>
+              <div class="strength-label-text" id="forgotStrengthLabelText">Độ mạnh: Chưa nhập</div>
+            </div>
+          </div>
+
+          <div class="auth-form-group">
+            <label>Xác nhận mật khẩu mới</label>
+            <div class="auth-input-wrap">
+              <span class="auth-input-icon">🛡️</span>
+              <input type="password" id="forgotConfirmPassword" placeholder="Nhập lại mật khẩu mới..." required />
+              <button type="button" class="toggle-pass-btn" data-target="forgotConfirmPassword">👁️</button>
+            </div>
+          </div>
+
+          <button type="submit" id="forgotSubmitBtn" class="cyber-btn auth-submit-btn">
+            <span>🔄 ĐẶT LẠI MẬT KHẨU</span>
+          </button>
+        </form>
+
+        <div class="auth-footer-prompt">
+          Nhớ mật khẩu rồi? <a href="#" class="switch-to-login">Quay lại Đăng nhập</a>
+        </div>
+      </div>
+
+      <!-- TAB 4: QUICK LOGIN VIA OTP -->
+      <div class="auth-tab-content" id="tabContentOtpLogin">
+        <form id="otpLoginForm" onsubmit="return false;">
+          <p class="auth-tab-description">
+            Đăng nhập tức thì không cần mật khẩu! Chúng tôi sẽ gửi mã OTP 6 số đến Gmail của bạn.
+          </p>
+
+          <div class="auth-form-group">
+            <label>Địa chỉ Email</label>
+            <div class="auth-input-with-action">
+              <div class="auth-input-wrap">
+                <span class="auth-input-icon">📧</span>
+                <input type="email" id="otpLoginEmail" placeholder="Nhập email của bạn..." required />
+              </div>
+              <button type="button" id="otpLoginSendBtn" class="cyber-btn otp-request-btn">
+                <span>Gửi OTP</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="auth-form-group">
+            <label>Mã OTP (6 chữ số)</label>
+            <div class="auth-input-wrap">
+              <span class="auth-input-icon">🔑</span>
+              <input type="text" id="otpLoginOtp" placeholder="Nhập 6 số trong Gmail..." maxlength="6" required />
+            </div>
+          </div>
+
+          <button type="submit" id="otpLoginSubmitBtn" class="cyber-btn auth-submit-btn">
+            <span>⚡ XÁC THỰC & ĐĂNG NHẬP</span>
+          </button>
+        </form>
+
+        <div class="auth-footer-prompt">
+          Muốn dùng mật khẩu? <a href="#" class="switch-to-login">Đăng nhập bằng tài khoản</a>
+        </div>
+      </div>
+
+      <!-- TAB 5: GOOGLE SIGN-IN & REGISTER -->
+      <div class="auth-tab-content" id="tabContentGoogle">
+        <form id="googleAuthForm" onsubmit="return false;">
+          <div style="text-align: center; margin-bottom: 16px;">
+            <svg width="44" height="44" viewBox="0 0 24 24" style="margin-bottom: 6px;">
+              <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/>
+              <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/>
+              <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3 0-.8.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15.2c0 2.8.7 5.5 1.9 7.9l3.7-2.9z"/>
+              <path fill="#34A853" d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16.5C3.7 20.2 7.5 23.5 12 23.5z"/>
+            </svg>
+            <h3 style="margin: 0; font-size: 1.2rem; color: #fff;">Đăng Nhập / Đăng Ký Bằng Google</h3>
+            <p style="margin: 4px 0 0 0; font-size: 0.82rem; color: #94a3b8;">Đồng bộ tài khoản Google ngay lập tức</p>
+          </div>
+
+          <div class="auth-form-group">
+            <label>Địa chỉ Gmail của bạn</label>
+            <div class="auth-input-wrap">
+              <span class="auth-input-icon">📧</span>
+              <input type="email" id="googleEmailInput" placeholder="nhap_email@gmail.com" required />
+            </div>
+          </div>
+
+          <div class="auth-form-group">
+            <label>Tên hiển thị Google (Tùy chọn)</label>
+            <div class="auth-input-wrap">
+              <span class="auth-input-icon">👤</span>
+              <input type="text" id="googleNameInput" placeholder="Ví dụ: Nguyễn Văn Thức..." />
+            </div>
+          </div>
+
+          <button type="submit" id="googleSubmitActionBtn" class="cyber-btn google-auth-btn" style="width: 100%; padding: 12px; font-weight: 700; margin-top: 10px; cursor: pointer;">
+            <svg width="20" height="20" viewBox="0 0 24 24">
+              <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/>
+              <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/>
+              <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3 0-.8.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15.2c0 2.8.7 5.5 1.9 7.9l3.7-2.9z"/>
+              <path fill="#34A853" d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16.5C3.7 20.2 7.5 23.5 12 23.5z"/>
+            </svg>
+            <span>XÁC NHẬN VỚI TÀI KHOẢN GOOGLE</span>
+          </button>
+        </form>
+
+        <div class="auth-footer-prompt">
+          <a href="#" class="switch-to-login">Quay lại Đăng nhập thường</a> • <a href="#" class="switch-to-register">Đăng ký bằng mật khẩu</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- User Profile Modal (When logged in) -->
+  <div id="aiTurboProfileModal" class="cyber-modal-overlay" style="display: none;">
+    <div class="cyber-modal-container profile-modal-box">
+      <button class="modal-close-btn" id="closeProfileModalBtn" title="Đóng">&times;</button>
+      
+      <div class="profile-header-area">
+        <div class="profile-avatar-large profile-avatar-clickable" id="profileModalAvatar" title="Bấm vào đây để tải ảnh đại diện từ máy tính hoặc điện thoại">
+          <span>👤</span>
+          <div class="avatar-hover-overlay">
+            <span class="overlay-icon">📷</span>
+            <span class="overlay-text">Đổi ảnh</span>
+          </div>
+        </div>
+        <input type="file" id="avatarFileInput" accept="image/png,image/jpeg,image/webp,image/gif" style="display: none;" />
+        <button type="button" id="changeAvatarBtn" class="change-avatar-text-btn" title="Chọn tệp ảnh từ máy tính hoặc điện thoại">
+          <span>📷 Chọn ảnh từ thiết bị</span>
+        </button>
+        <div id="avatarUploadProgress" class="avatar-upload-status" style="display: none;">Đang xử lý ảnh...</div>
+        <h3 id="profileModalUsername">Username</h3>
+        <span class="profile-role-badge" id="profileModalRole">Thành viên AI Turbo Pro</span>
+      </div>
+
+      <div class="profile-info-list">
+        <div class="profile-info-item">
+          <span class="info-item-label">Email:</span>
+          <strong class="info-item-val" id="profileModalEmail">-</strong>
+        </div>
+        <div class="profile-info-item">
+          <span class="info-item-label">Trạng thái xác thực:</span>
+          <strong class="info-item-val text-success">✓ Đã xác minh OTP Gmail</strong>
+        </div>
+        <div class="profile-info-item">
+          <span class="info-item-label">Đặc quyền AI:</span>
+          <strong class="info-item-val text-neon">Không giới hạn hỏi đáp & Sửa code</strong>
+        </div>
+      </div>
+
+      <div class="profile-actions-area">
+        <a href="/chat" class="cyber-btn primary-glow-btn full-width auth-chat-link" style="text-decoration:none; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <span>💬 VÀO KHUNG CHAT AI NGAY</span>
+        </a>
+        <button id="logoutBtn" class="cyber-btn danger-subtle-btn full-width">
+          <span>🚪 ĐĂNG XUẤT TÀI KHOẢN</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Google Identity Services, Auth Module & Realtime LiveReload -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="/auth.js"></script>
+  <script src="/livereload.js"></script>
+</body>
+</html>

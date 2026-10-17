@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Turbo Pro • Cyber Chat Interface</title>
+    <link rel="icon" type="image/png" href="/assets/logo.png" />
+    <!-- Google Fonts for futuristic & clean typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <!-- Interactive Background & Fullscreen Mouse Trail Canvases -->
+    <canvas id="bgCanvas"></canvas>
+    <canvas id="trailCanvas"></canvas>
+
+    <!-- Ambient Neon Background Glows -->
+    <div class="ambient-glow glow-top-left"></div>
+    <div class="ambient-glow glow-bottom-right"></div>
+    <div class="cyber-grid-overlay"></div>
+
+    <!-- Main Container -->
+    <div class="app-shell glass-card">
+      <!-- Sidebar -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <div class="brand-badge">
+            <div class="brand-avatar-glow">
+              <img src="/assets/logo.png" alt="AI Turbo Logo" class="brand-avatar-img" />
+            </div>
+            <div class="brand-details">
+              <span class="brand-name">AI TURBO</span>
+              <span class="brand-sub">QUANTUM CORE</span>
+            </div>
+          </div>
+          <button id="sidebarToggleBtn" class="icon-btn sidebar-toggle" title="Thu gọn Menu" aria-label="Toggle sidebar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- New Chat Button with Cyber Glow Border -->
+        <button id="newChatBtn" class="cyber-btn primary-glow-btn">
+          <span class="btn-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </span>
+          <span class="btn-text">Cuộc trò chuyện mới</span>
+          <span class="btn-flare"></span>
+        </button>
+
+        <!-- Chat History Section -->
+        <div class="history-section">
+          <div class="history-label">Lịch sử gần đây</div>
+          <div class="history-list" id="historyList">
+            <!-- Dynamic History Items loaded from LocalStorage -->
+          </div>
+        </div>
+
+        <!-- System Stats Footer -->
+        <div class="sidebar-footer">
+          <div class="core-status-card">
+            <div class="core-status-header">
+              <span class="pulse-indicator"></span>
+              <span class="status-title" id="coreStatusLabel">NEURAL CORE ACTIVE</span>
+            </div>
+            <div class="core-stats">
+              <span>Latency: <strong>14ms</strong></span>
+              <span>Model: <strong id="modelBadge">PRO v3.7</strong></span>
+            </div>
+          </div>
+          <button id="clearAllBtn" class="cyber-btn danger-subtle-btn" title="Xóa lịch sử">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+            <span>Xoá phiên chat</span>
+          </button>
+        </div>
+      </aside>
+
+      <!-- Sidebar Backdrop Overlay on Mobile/Tablet -->
+      <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+      <!-- Main Chat Panel -->
+      <main class="chat-panel">
+        <!-- Chat Header HUD -->
+        <header class="chat-header">
+          <div class="header-left">
+            <!-- Mobile/Tablet Toggle Sidebar Button -->
+            <button id="mobileMenuBtn" class="icon-btn mobile-menu-btn" title="Mở danh sách lịch sử chat" aria-label="Open sidebar history">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="9" y1="3" x2="9" y2="21"></line>
+              </svg>
+            </button>
+
+            <!-- 3-Lines Button triggering the 2-Option Upload Menu -->
+            <div class="upload-dropdown-wrapper">
+              <button id="projectMenuBtn" class="icon-btn project-workspace-btn" title="Tải lên Dự án (Thư mục / Tệp)" aria-label="Upload Project">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="3" y1="12" x2="21" y2="12"></line>
+                  <line x1="3" y1="6" x2="21" y2="6"></line>
+                  <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+              </button>
+
+              <!-- Sleek 2-Option Dropdown Menu -->
+              <div class="upload-menu-dropdown" id="uploadMenuDropdown">
+                <div class="upload-menu-header">
+                  <span>TẢI DỰ ÁN VÀO AI</span>
+                  <span id="menuKeyStatusBadge" class="menu-key-badge">🔒 Cần Key</span>
+                </div>
+                <button id="uploadFolderOptionBtn" class="upload-menu-item">
+                  <div class="menu-item-icon">📂</div>
+                  <div class="menu-item-info">
+                    <span class="item-title">Tải lên Thư mục</span>
+                    <span class="item-desc">Chọn một folder chứa toàn bộ code dự án</span>
+                  </div>
+                  <span class="item-lock-icon">🔒</span>
+                </button>
+                <button id="uploadFileOptionBtn" class="upload-menu-item">
+                  <div class="menu-item-icon">📄</div>
+                  <div class="menu-item-info">
+                    <span class="item-title">Tải lên Tệp (Files)</span>
+                    <span class="item-desc">Chọn một hoặc nhiều file mã nguồn</span>
+                  </div>
+                  <span class="item-lock-icon">🔒</span>
+                </button>
+                <button id="uploadImageOptionBtn" class="upload-menu-item">
+                  <div class="menu-item-icon">🖼️</div>
+                  <div class="menu-item-info">
+                    <span class="item-title">Gửi Ảnh phân tích (Vision)</span>
+                    <span class="item-desc">Chụp ảnh lỗi, UI mockup, sơ đồ để AI sửa code</span>
+                  </div>
+                  <span class="item-lock-icon">🔒</span>
+                </button>
+                <button id="createLocalFsOptionBtn" class="upload-menu-item">
+                  <div class="menu-item-icon">➕</div>
+                  <div class="menu-item-info">
+                    <span class="item-title">Tạo File / Thư mục trong máy</span>
+                    <span class="item-desc">Tạo trực tiếp thư mục hoặc tệp trên máy tính</span>
+                  </div>
+                  <span class="item-lock-icon">🔒</span>
+                </button>
+                <button id="openProjectFilesBtn" class="upload-menu-item">
+                  <div class="menu-item-icon">📝</div>
+                  <div class="menu-item-info">
+                    <span class="item-title">Chỉnh sửa Code trong Dự án</span>
+                    <span class="item-desc">Mở danh sách file, xem và trực tiếp sửa code trên máy</span>
+                  </div>
+                  <span class="item-lock-icon">🔒</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Hidden Inputs for Uploading -->
+            <input type="file" id="fileUploadHidden" multiple style="display: none;" />
+            <input type="file" id="folderUploadHidden" webkitdirectory directory multiple style="display: none;" />
+
+            <div class="header-brand-box">
+              <div class="mode-selector">
+                <button id="modeSelectorBtn" class="mode-selector-btn" type="button" aria-haspopup="listbox" aria-expanded="false" title="Chọn chế độ AI">
+                  <span class="mode-selector-icon">⌘</span>
+                  <span id="modeSelectorLabel">Lập trình</span>
+                  <span class="mode-selector-chevron">⌄</span>
+                </button>
+                <div id="modeMenu" class="mode-menu" role="listbox" aria-label="Chế độ làm việc">
+                  <button class="mode-option active" type="button" role="option" aria-selected="true" data-mode="code">
+                    <span class="mode-option-icon">⌘</span>
+                    <span><strong>Lập trình</strong><small>Code, lỗi và kiến trúc</small></span>
+                  </button>
+                  <button class="mode-option" type="button" role="option" aria-selected="false" data-mode="assistant">
+                    <span class="mode-option-icon">✦</span>
+                    <span><strong>Trợ lý đa năng</strong><small>Hỏi đáp và ý tưởng</small></span>
+                  </button>
+                </div>
+              </div>
+              <div class="mode-selector provider-selector">
+                <button id="providerSelectorBtn" class="mode-selector-btn provider-btn-thucgpt" type="button" aria-haspopup="listbox" aria-expanded="false" title="Chọn AI để làm việc">
+                  <span class="mode-selector-icon">👑</span>
+                  <span id="providerSelectorLabel">THUCGPT 👑</span>
+                  <span class="mode-selector-chevron">⌄</span>
+                </button>
+                <div id="providerMenu" class="mode-menu" role="listbox" aria-label="Chọn AI">
+                  <button class="mode-option provider-option highlight-thucgpt active" type="button" role="option" aria-selected="true" data-provider="thucgpt">
+                    <span class="mode-option-icon">👑</span>
+                    <span><strong style="color: #ffd700;">ThucGPT 👑</strong><small>Siêu Tốc • Coder Đa Năng Vượt Trội</small></span>
+                  </button>
+                  <button class="mode-option provider-option highlight-thucthinking" type="button" role="option" aria-selected="false" data-provider="thucthinking">
+                    <span class="mode-option-icon">🧠</span>
+                    <span><strong style="color: #a855f7;">ThucThinking Pro 🧠</strong><small>Suy Luận Sâu Đẳng Cấp Opus Thinking • Sửa Lỗi Kiến Trúc</small></span>
+                  </button>
+                  <button class="mode-option provider-option" type="button" role="option" aria-selected="false" data-provider="deepseek">
+                    <span class="mode-option-icon">✦</span>
+                    <span><strong>AI ĐẲNG CẤP</strong><small>DeepSeek API • Chat & Code</small></span>
+                  </button>
+                  <button class="mode-option provider-option" type="button" role="option" aria-selected="false" data-provider="gemini">
+                    <span class="mode-option-icon">✨</span>
+                    <span><strong>GEMINI AI</strong><small>Google Gemini • Hỗ trợ Vision</small></span>
+                  </button>
+                  <button class="mode-option provider-option" type="button" role="option" aria-selected="false" data-provider="openai">
+                    <span class="mode-option-icon">🤖</span>
+                    <span><strong>OPENAI AI</strong><small>ChatGPT GPT-4o • Vision</small></span>
+                  </button>
+                  <button class="mode-option provider-option" type="button" role="option" aria-selected="false" data-provider="groq">
+                    <span class="mode-option-icon">⚡</span>
+                    <span><strong>GROQ AI</strong><small>Groq Cloud • Tốc độ siêu tốc</small></span>
+                  </button>
+                  <button class="mode-option provider-option" type="button" role="option" aria-selected="false" data-provider="ollama">
+                    <span class="mode-option-icon">💻</span>
+                    <span><strong>AI VIP PRO</strong><small>Ollama local • Riêng tư & Code</small></span>
+                  </button>
+                </div>
+              </div>
+              <!-- Interactive AI Turbo Boost / Overclock Lightning Button -->
+              <button id="turboBoostBtn" class="brand-hologram-btn" title="⚡ Bấm để Tăng tốc & Ép xung AI (Overclock 1x - 5x)" aria-label="Turbo Overclock">
+                <span class="holo-symbol">⚡</span>
+                <span class="holo-ring"></span>
+                <span class="boost-level-tag" id="boostTagMini">1X</span>
+              </button>
+
+              <div class="header-title-wrap">
+                <div class="title-with-status">
+                  <span class="header-glow-dot"></span>
+                  <h2>AI Turbo Assistant</h2>
+                  <span class="cyber-badge" id="aiModeBadge">PRO v3.7 • 1X</span>
+                </div>
+                <span class="header-sub">Interactive Neural Intelligence • Real-time Stream</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="header-actions">
+            <!-- Active Project Badge Indicator -->
+            <div id="activeProjectBadge" class="project-pill-badge" style="display: none;">
+              <span class="pill-dot"></span>
+              <span class="pill-name" id="activeProjectName">Project</span>
+              <span class="pill-count" id="activeProjectCount">0 files</span>
+            </div>
+
+            <!-- TT AI (Thông Tin AI) Button -->
+            <a href="/info" target="_blank" id="aiInfoBtn" class="ai-info-hud-btn" title="⚡ TT AI: Xem Trang Thông Tin Chi Tiết Về AI Turbo Pro & ThucGPT">
+              <span class="info-badge-dot"></span>
+              <span class="info-icon">⚡</span>
+              <span class="info-text">TT AI</span>
+            </a>
+
+            <!-- Quick Boost Header Trigger -->
+            <button id="quickOverclockBtn" class="icon-btn turbo-quick-btn" title="Điều chỉnh Tăng Tốc AI" aria-label="Adjust AI Speed">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+              </svg>
+            </button>
+
+            <button id="themeFxBtn" class="icon-btn" title="Bật/Tắt hiệu ứng hạt Mouse Trail" aria-label="Toggle FX">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+              </svg>
+            </button>
+            <button id="fullscreenBtn" class="icon-btn" title="Toàn màn hình" aria-label="Fullscreen">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+              </svg>
+            </button>
+          </div>
+        </header>
+
+        <!-- Message Stream Area -->
+        <div class="conversation-container" id="conversationContainer">
+          <div id="chatMessages" class="chat-messages">
+            <!-- Welcome Initial Assistant Card -->
+            <div class="message assistant welcome-card">
+              <div class="message-avatar">
+                <div class="avatar-ring">
+                  <img src="/assets/logo.png" alt="AI Avatar" class="message-avatar-img" />
+                </div>
+              </div>
+              <div class="message-content">
+                <div class="message-author">
+                  <span class="author-name">AI Assistant</span>
+                  <span class="message-time">Vừa xong</span>
+                </div>
+                <div class="message-body">
+                  <p class="greeting-highlight">
+                    👋 Xin chào! Tôi là <strong>AI Turbo Pro</strong> — trợ lý trí tuệ nhân tạo lập trình thông minh.
+                  </p>
+                  <p>Bạn có thể nhấn nút <strong>☰</strong> ở góc trên bên trái để <strong>Tải lên Thư mục</strong> hoặc <strong>Tệp mã nguồn</strong>. Khi tải lên, dự án sẽ xuất hiện trực tiếp trong khung chat và tôi có thể đọc, giải thích hoặc chỉnh sửa code theo yêu cầu của bạn!</p>
+                  
+                  <!-- Quick Prompt Cards -->
+                  <div class="quick-prompts-grid">
+                    <button class="prompt-chip" data-prompt="Đọc toàn bộ file trong project và tóm tắt kiến trúc dự án">
+                      <span class="chip-icon">📂</span>
+                      <span class="chip-text">Tóm tắt cấu trúc Project</span>
+                    </button>
+                    <button class="prompt-chip" data-prompt="Kiểm tra các lỗi logic và bảo mật trong mã nguồn dự án">
+                      <span class="chip-icon">🔍</span>
+                      <span class="chip-text">Tìm lỗi & Tối ưu code</span>
+                    </button>
+                    <button class="prompt-chip" data-prompt="Thêm giao diện Cyberpunk vào file index.html và style.css">
+                      <span class="chip-icon">⚡</span>
+                      <span class="chip-text">Nâng cấp UI tự động</span>
+                    </button>
+                    <button class="prompt-chip" data-prompt="Viết code hiệu ứng ma trận Cyber Matrix bằng JavaScript Canvas siêu đẹp">
+                      <span class="chip-icon">✨</span>
+                      <span class="chip-text">Viết hiệu ứng Matrix Canvas</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Floating Smart Composer Dock -->
+        <div class="composer-container">
+          <!-- Attached Image Preview Bar -->
+          <div id="imagePreviewContainer" class="image-preview-bar" style="display: none;">
+            <div class="image-preview-thumbnail-wrap">
+              <img id="imagePreviewThumbnail" src="" alt="Ảnh đính kèm" class="image-preview-img" />
+              <button type="button" id="removeImageBtn" class="remove-image-btn" title="Gỡ ảnh đính kèm" aria-label="Remove image">&times;</button>
+            </div>
+            <div class="image-preview-meta">
+              <div class="image-preview-title-row">
+                <span id="imagePreviewName" class="image-preview-filename">image.png</span>
+                <span id="imagePreviewSize" class="image-preview-filesize">0 KB</span>
+              </div>
+              <span class="image-preview-tag">👁️ Sẵn sàng phân tích và sửa lỗi</span>
+            </div>
+          </div>
+
+          <form id="chatForm" class="composer-form">
+            <div class="composer-dock">
+              <button type="button" class="dock-tool-btn" id="attachBtn" title="Đính kèm Thư mục hoặc Tệp vào cuộc trò chuyện" aria-label="Attach file">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                </svg>
+              </button>
+
+              <!-- Dedicated Image Upload Button -->
+              <button type="button" class="dock-tool-btn image-upload-btn" id="imageUploadBtn" title="Gửi ảnh (Chụp màn hình lỗi, mockup UI, sơ đồ code - hoặc bấm Ctrl+V để dán trực tiếp)" aria-label="Attach image">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                  <polyline points="21 15 16 10 5 21"></polyline>
+                </svg>
+              </button>
+              <input type="file" id="imageUploadHidden" accept="image/*" style="display: none;" />
+
+              <button type="button" class="dock-tool-btn run-project-btn" id="runProjectBtn" title="Chạy và kiểm tra Project" aria-label="Run project tests">▶</button>
+
+              <div class="input-area-wrap">
+                <textarea
+                  id="messageInput"
+                  rows="1"
+                  placeholder="Hỏi AI hoặc yêu cầu chỉnh sửa code trong Project... (Nhấn Enter để gửi)"
+                  aria-label="Message input"
+                ></textarea>
+              </div>
+
+              <button type="button" class="dock-tool-btn mic-btn" id="voiceBtn" title="Nhập liệu bằng giọng nói" aria-label="Voice input" aria-pressed="false">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                  <line x1="12" y1="19" x2="12" y2="23"></line>
+                  <line x1="8" y1="23" x2="16" y2="23"></line>
+                </svg>
+              </button>
+
+              <button type="submit" id="sendBtn" class="send-action-btn" title="Gửi tin nhắn">
+                <span class="send-text">Gửi</span>
+                <span class="send-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                  </svg>
+                </span>
+                <span class="send-glow-effect"></span>
+              </button>
+            </div>
+          </form>
+          <div class="composer-footnote">
+            <span>Mẹo: AI Turbo có thể trực tiếp đọc và tự động cập nhật code trong Project của bạn.</span>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Toast Notification for Copy / Actions -->
+    <div id="toastNotification" class="cyber-toast">
+      <span class="toast-icon">✓</span>
+      <span class="toast-message">Đã sao chép vào bộ nhớ tạm!</span>
+    </div>
+
+    <!-- AI Quantum Overclock & Turbo Accelerator Modal -->
+    <div id="turboOverclockModal" class="turbo-modal-backdrop">
+      <div class="turbo-modal-card">
+        <div class="turbo-modal-header">
+          <div class="modal-title-box">
+            <div class="modal-lightning-icon">
+              <img src="/assets/logo.png" alt="AI Logo" class="modal-logo-img" />
+            </div>
+            <div class="modal-title-text">
+              <h3>TRẠM ÉP XUNG & TĂNG TỐC AI</h3>
+              <span>Quantum Core Neural Overclock • Level 1x - 5x</span>
+            </div>
+          </div>
+          <button id="closeOverclockModalBtn" class="modal-close-btn" title="Đóng">&times;</button>
+        </div>
+
+        <div class="turbo-modal-body">
+          <!-- Power Indicator Banner -->
+          <div class="overclock-status-banner" id="overclockBanner">
+            <div class="status-badge-level" id="statusBadgeLevel">⚡ CHẾ ĐỘ: TIÊU CHUẨN (1X)</div>
+            <div class="status-desc-text" id="statusDescText">Cân bằng tốc độ và độ chính xác ổn định cho mọi tác vụ hàng ngày.</div>
+          </div>
+
+          <!-- Multi-Level Accelerator Slider -->
+          <div class="overclock-slider-wrapper">
+            <div class="slider-header-labels">
+              <span class="slider-label-title">MỨC ĐỘ TĂNG CƯỜNG & ÉP XUNG (BOOST POWER):</span>
+              <span class="slider-current-val" id="sliderCurrentVal">1X</span>
+            </div>
+
+            <div class="slider-container">
+              <input type="range" id="overclockSlider" min="1" max="5" step="1" value="1" class="cyber-range-slider" />
+              <div class="slider-ticks">
+                <span class="tick active" data-level="1">1X<br><small>Chuẩn</small></span>
+                <span class="tick" data-level="2">2X<br><small>Nhanh</small></span>
+                <span class="tick" data-level="3">3X<br><small>Chuyên gia</small></span>
+                <span class="tick" data-level="4">4X<br><small>Siêu việt</small></span>
+                <span class="tick" data-level="5">5X 🔥<br><small>Tối thượng</small></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Live Neural Metric Gauges -->
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="metric-icon">⚡</div>
+              <div class="metric-info">
+                <span class="metric-label">Tốc độ phản xạ</span>
+                <span class="metric-value" id="metricSpeed">~14ms</span>
+              </div>
+              <div class="metric-bar"><div class="bar-fill" id="barSpeed" style="width: 25%;"></div></div>
+            </div>
+
+            <div class="metric-card">
+              <div class="metric-icon">🧠</div>
+              <div class="metric-info">
+                <span class="metric-label">Tư duy Logic & Độ khôn</span>
+                <span class="metric-value" id="metricLogic">Cấp độ 1</span>
+              </div>
+              <div class="metric-bar"><div class="bar-fill" id="barLogic" style="width: 25%;"></div></div>
+            </div>
+
+            <div class="metric-card">
+              <div class="metric-icon">🎯</div>
+              <div class="metric-info">
+                <span class="metric-label">Độ chính xác viết Code</span>
+                <span class="metric-value" id="metricPrecision">90%</span>
+              </div>
+              <div class="metric-bar"><div class="bar-fill" id="barPrecision" style="width: 30%;"></div></div>
+            </div>
+
+            <div class="metric-card">
+              <div class="metric-icon">🛡️</div>
+              <div class="metric-info">
+                <span class="metric-label">Tự động bắt lỗi & Tối ưu</span>
+                <span class="metric-value" id="metricDefense">Cơ bản</span>
+              </div>
+              <div class="metric-bar"><div class="bar-fill" id="barDefense" style="width: 20%;"></div></div>
+            </div>
+          </div>
+
+          <!-- Quick Presets -->
+          <div class="presets-section">
+            <div class="presets-label">CHỌN NHANH CHẾ ĐỘ:</div>
+            <div class="presets-buttons">
+              <button class="preset-btn" data-set-level="1">⚡ Tiêu Chuẩn (1X)</button>
+              <button class="preset-btn" data-set-level="3">🧠 Chuyên Gia Code (3X)</button>
+              <button class="preset-btn highlight" data-set-level="5">🔥 Quantum Tối Thượng (5X)</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="turbo-modal-footer">
+          <button id="applyOverclockBtn" class="cyber-btn primary-glow-btn full-width">
+            <span>KÍCH HOẠT ÉP XUNG NĂNG LƯỢNG NGAY</span>
+            <span class="btn-flare"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Claude-style Live Artifacts Sandbox Modal -->
+    <div id="artifactModal" class="artifact-modal-backdrop" style="display: none;">
+      <div class="artifact-modal-container">
+        <div class="artifact-modal-header">
+          <div class="artifact-title-box">
+            <span class="artifact-icon">⚡</span>
+            <div class="artifact-header-text">
+              <h3 id="artifactTitle">CLAUDE ARTIFACTS LIVE RUNNER</h3>
+              <span class="artifact-badge" id="artifactSubtitle">Interactive Live Preview & Code Runner</span>
+            </div>
+          </div>
+          <div class="artifact-header-tabs">
+            <button type="button" id="tabPreviewBtn" class="artifact-tab-btn active">▶ Chạy trực tiếp (Preview)</button>
+            <button type="button" id="tabCodeBtn" class="artifact-tab-btn">💻 Xem mã nguồn</button>
+            <button type="button" id="tabConsoleBtn" class="artifact-tab-btn">📝 Console Log (<span id="consoleCount">0</span>)</button>
+          </div>
+          <div class="artifact-header-actions">
+            <button type="button" id="reloadArtifactBtn" class="cyber-btn small-btn" title="Chạy lại code">🔄 Tải lại</button>
+            <button type="button" id="openNewTabArtifactBtn" class="cyber-btn small-btn" title="Mở trong tab mới">↗ Tab mới</button>
+            <button type="button" id="saveToWorkspaceBtn" class="cyber-btn small-btn primary-btn" title="Lưu mã nguồn vào Workspace">💾 Lưu vào Project</button>
+            <button type="button" id="closeArtifactBtn" class="artifact-close-btn" title="Đóng">&times;</button>
+          </div>
+        </div>
+        <div class="artifact-modal-body">
+          <!-- Live Web Iframe Sandbox -->
+          <div id="artifactPreviewPane" class="artifact-pane active">
+            <iframe id="artifactIframe" sandbox="allow-scripts allow-modals allow-forms allow-same-origin"></iframe>
+          </div>
+          <!-- Code View Pane -->
+          <div id="artifactCodePane" class="artifact-pane">
+            <pre><code id="artifactCodeViewer" class="artifact-code-viewer"></code></pre>
+          </div>
+          <!-- Console Logs Pane -->
+          <div id="artifactConsolePane" class="artifact-pane">
+            <div class="artifact-console-toolbar">
+              <span>Terminal & Console Logs (stdout / stderr)</span>
+              <button type="button" id="clearConsoleBtn" class="cyber-btn small-btn">Xóa logs</button>
+            </div>
+            <div id="artifactConsoleLogs" class="artifact-console-logs">
+              <div class="log-line log-info">[Hệ thống] Sandbox đã sẵn sàng. Mọi kết quả console.log() sẽ hiển thị tại đây.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Universal Centered Modal Popup (Replaces all browser default popups/alerts) -->
+    <div id="universalModal" class="universal-modal-backdrop" style="display: none;">
+      <div class="universal-modal-card">
+        <div class="universal-modal-header">
+          <div class="universal-modal-title-wrap">
+            <span class="universal-modal-icon" id="universalModalIcon">📁</span>
+            <h3 class="universal-modal-title" id="universalModalTitle">Thông báo</h3>
+          </div>
+          <button type="button" class="universal-modal-close" id="universalModalCloseBtn" aria-label="Đóng">&times;</button>
+        </div>
+        <div class="universal-modal-body" id="universalModalBody">
+          <!-- Dynamic Content -->
+        </div>
+        <div class="universal-modal-footer" id="universalModalFooter">
+          <button type="button" class="modal-btn modal-btn-cancel" id="universalModalCancelBtn">Hủy bỏ</button>
+          <button type="button" class="modal-btn modal-btn-confirm" id="universalModalConfirmBtn">
+            <span id="universalModalConfirmIcon">🚀</span>
+            <span id="universalModalConfirmText">Xác nhận</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Logic Script -->
+    <script src="/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Turbo Pro Workspace</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <button class="btn-new-chat">
+        <i class="fa-solid fa-plus"></i> Cuộc trò chuyện mới
+      </button>
+
+      <div class="history-section">
+        <div class="history-title">LỊCH SỬ GẦN ĐÂY</div>
+        <ul class="history-list">
+          <li class="history-item active">
+            <i class="fa-regular fa-message"></i>
+            <span>hãy thiết kế cho tôi 1 giao d...</span>
+            <span class="dot-active"></span>
+          </li>
+          <li class="history-item">
+            <i class="fa-regular fa-message"></i>
+            <span>create 1 tools spam sms</span>
+          </li>
+          <li class="history-item">
+            <i class="fa-regular fa-message"></i>
+            <span>create 1 tools spam sms</span>
+          </li>
+          <li class="history-item">
+            <i class="fa-regular fa-message"></i>
+            <span>create 1 tools spsm sms</span>
+          </li>
+          <li class="history-item">
+            <i class="fa-regular fa-message"></i>
+            <span>code cho tôi 1 cái máy tính b...</span>
+          </li>
+          <li class="history-item">
+            <i class="fa-regular fa-message"></i>
+            <span>create 1 tools spsm sms</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="status-badge">
+          <span class="status-dot"></span> AI ĐẮNG CẤP ONLINE
+        </div>
+        <div class="status-info">
+          <span>Latency: <strong>14ms</strong></span>
+          <span>Model: <strong>PRO v3.7</strong></span>
+        </div>
+        <button class="btn-clear-chat">
+          <i class="fa-solid fa-trash-can"></i> Xoá phiên chat
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <div class="chat-viewport">
+        <!-- Code Window Block -->
+        <div class="code-container">
+          <!-- Animated Particles Effect -->
+          <div class="particles-container" id="particles"></div>
+
+          <pre><code class="language-css">          border-radius: 50%;
+          animation: sparkle 2s ease-in-out infinite;
+      }
+
+      @keyframes sparkle {
+          0%, 100% {
+              opacity: 0;
+              transform: scale(0);
+          }
+          50% {
+              opacity: 1;
+              transform: scale(1);
+          }
+      }
+      &lt;/style&gt;
+    &lt;/head&gt;
+    &lt;body&gt;</code></pre>
+        </div>
+      </div>
+
+      <!-- Bottom Bar Input -->
+      <div class="input-wrapper">
+        <div class="input-box">
+          <button class="icon-btn" title="Đính kèm tệp"><i class="fa-solid fa-paperclip"></i></button>
+          <button class="icon-btn" title="Tải ảnh lên"><i class="fa-regular fa-image"></i></button>
+          <button class="icon-btn" title="Chạy kịch bản"><i class="fa-solid fa-play"></i></button>
+          
+          <input type="text" id="userInput" placeholder="Hỏi AI hoặc yêu cầu chỉnh sửa code trong Project... (Nhấn Enter để gửi)">
+          
+          <button class="icon-btn" title="Ghi âm"><i class="fa-solid fa-microphone"></i></button>
+          <button class="btn-send" id="sendBtn">Gửi <i class="fa-solid fa-paper-plane"></i></button>
+        </div>
+        <div class="input-hint">
+          Mẹo: AI Turbo có thể trực tiếp đọc và tự động cập nhật code trong Project của bạn.
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>

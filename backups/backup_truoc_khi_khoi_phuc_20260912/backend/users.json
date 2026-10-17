@@ -1,0 +1,73 @@
+[
+  {
+    "id": "usr_ef694a1e884d6db7",
+    "username": "Google_Test_User",
+    "email": "google_tester@gmail.com",
+    "googleId": "g_123456789",
+    "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=google_tester%40gmail.com",
+    "role": "user",
+    "createdAt": "2026-09-05T12:47:22.995Z"
+  },
+  {
+    "id": "usr_0f0c2dc02fb96e8f",
+    "username": "Nguyen_Van_Thuc",
+    "email": "thuc_tester_google@gmail.com",
+    "googleId": "g_9988776655",
+    "avatar": "https://lh3.googleusercontent.com/a/test",
+    "role": "user",
+    "createdAt": "2026-09-05T12:55:07.414Z"
+  },
+  {
+    "id": "usr_bab86422802f7d0d",
+    "username": "Google_Tester",
+    "email": "testgoogle@gmail.com",
+    "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=testgoogle%40gmail.com",
+    "role": "user",
+    "createdAt": "2026-09-05T13:05:50.282Z"
+  },
+  {
+    "id": "usr_f7e264d0858f7de5",
+    "username": "Th_c___p_zai",
+    "email": "phanngocthuc.20082024@gmail.com",
+    "googleId": "g_64449507",
+    "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=phanngocthuc.20082024%40gmail.com",
+    "role": "user",
+    "createdAt": "2026-09-05T13:06:48.835Z"
+  },
+  {
+    "id": "usr_16eabc3d0527fb37",
+    "username": "TH_C_S_C_C_C_L__N_Y_50_L_N",
+    "email": "fwn20935@laoia.com",
+    "googleId": "g_95409399",
+    "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=fwn20935%40laoia.com",
+    "role": "user",
+    "createdAt": "2026-09-05T13:41:02.707Z"
+  },
+  {
+    "id": "usr_e1f8f9a7e969607b",
+    "username": "k_kg_gjhbb",
+    "email": "concactruongnguvay@gmail.com",
+    "googleId": "g_77508192",
+    "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=concactruongnguvay%40gmail.com",
+    "role": "user",
+    "createdAt": "2026-09-05T13:44:18.942Z"
+  },
+  {
+    "id": "usr_10e8d22166cafcd6",
+    "username": "B_o_Ch_u",
+    "email": "dinhthibaochau.bd@gmail.com",
+    "googleId": "g_53788305",
+    "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=dinhthibaochau.bd%40gmail.com",
+    "role": "user",
+    "createdAt": "2026-09-05T14:26:55.888Z"
+  },
+  {
+    "id": "usr_4d64e53e800d5222",
+    "username": "c_i___t_con_m__m_y",
+    "email": "vanbinht808@gmail.com",
+    "googleId": "g_75439277",
+    "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=vanbinht808%40gmail.com",
+    "role": "user",
+    "createdAt": "2026-09-06T07:04:44.797Z"
+  }
+]

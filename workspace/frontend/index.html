@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THỨC THINKING PRO - Siêu Trí Tuệ Suy Luận Chuyên Sâu</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Điều Hướng -->
+        <aside class="sidebar">
+            <div class="brand">
+                <i class="fa-solid fa-brain-circuit"></i>
+                <span>THỨC THINKING PRO</span>
+            </div>
+            <button class="new-chat-btn" id="newChatBtn">
+                <i class="fa-solid fa-plus"></i> Cuộc trò chuyện mới
+            </button>
+            <div class="history-list" id="historyList">
+                <div class="history-item active">Kiến trúc hệ thống AI Turbo</div>
+                <div class="history-item">Phân tích lỗi Silent Bugs</div>
+            </div>
+            <div class="sidebar-footer">
+                <div class="status-indicator">
+                    <span class="dot"></span> Độc lập & Tối thượng
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <main class="main-content">
+            <header class="chat-header">
+                <h2>Phiên Bản Siêu Trí Tuệ Tối Cao</h2>
+                <span class="badge">Engine: 5X Overclock</span>
+            </header>
+
+            <div class="chat-messages" id="chatMessages">
+                <!-- Tin nhắn chào mừng từ Thức Thinking Pro -->
+                <div class="message ai-message">
+                    <div class="avatar"><i class="fa-solid fa-brain"></i></div>
+                    <div class="content">
+                        <p><strong>THỨC THINKING PRO</strong> đã sẵn sàng. Tôi sở hữu năng lực suy luận đa tầng, phân tích gốc rễ và kiến trúc mã nguồn đỉnh cao. Bạn muốn tối ưu hoặc giải quyết bài toán hóc búa nào hôm nay?</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="chat-input-area">
+                <div class="input-wrapper">
+                    <textarea id="userInput" placeholder="Nhập yêu cầu kỹ thuật, refactor code, hoặc phân tích hệ thống..." rows="1"></textarea>
+                    <button id="sendBtn"><i class="fa-solid fa-paper-plane"></i></button>
+                </div>
+                <div class="disclaimer">Được sáng lập và làm chủ độc quyền bởi THỨC.</div>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

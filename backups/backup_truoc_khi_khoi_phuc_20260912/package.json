@@ -1,0 +1,16 @@
+{
+  "name": "ai-turbo-pro",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node start.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "nodemailer": "^10.0.0",
+    "openai": "^7.10.0",
+    "ws": "^8.21.3"
+  }
+}
