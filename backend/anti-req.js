@@ -62,13 +62,9 @@ function createAntiReqMiddleware(tierConfig) {
       const banUntil = ipJail.get(ip);
       if (now < banUntil) {
         const remainingSeconds = Math.ceil((banUntil - now) / 1000);
-        res.setHeader('Retry-After', remainingSeconds);
-        res.setHeader('X-AntiReq-Status', 'JAILED');
         return res.status(429).json({
           success: false,
-          error: `🚫 [Anti-Req Security] Địa chỉ IP (${ip}) đã bị tạm khóa do gửi quá nhiều yêu cầu bất thường (Flood/Spam). Vui lòng chờ ${remainingSeconds} giây trước khi truy cập lại.`,
-          retryAfter: remainingSeconds,
-          status: 'IP_JAILED'
+          error: 'Request temporarily blocked.'
         });
       } else {
         // Hết thời gian giam -> xóa khỏi jail
@@ -94,11 +90,6 @@ function createAntiReqMiddleware(tierConfig) {
     const remaining = Math.max(0, tierConfig.max - record.count);
     const resetTime = Math.ceil((record.startTime + tierConfig.windowMs - now) / 1000);
 
-    // Gán các HTTP Security Headers tiêu chuẩn
-    res.setHeader('X-AntiReq-Limit', tierConfig.max);
-    res.setHeader('X-AntiReq-Remaining', remaining);
-    res.setHeader('X-AntiReq-Reset', resetTime);
-
     // 2. Kiểm tra nếu vượt quá hạn mức cho phép
     if (record.count > tierConfig.max) {
       record.violations = (record.violations || 0) + 1;
@@ -110,21 +101,15 @@ function createAntiReqMiddleware(tierConfig) {
         const banSeconds = Math.ceil(CONFIG.JAIL.durationMs / 1000);
         console.warn(`[Anti-Req Alert] 🚨 IP ${ip} đã bị đưa vào danh sách TẠM GIAM ${banSeconds}s vì vi phạm ${record.violations} lần!`);
         
-        res.setHeader('Retry-After', banSeconds);
         return res.status(429).json({
           success: false,
-          error: `🚫 [Anti-Req Security] Bạn đã gửi yêu cầu quá dồn dập nhiều lần. IP của bạn đã bị tạm khóa trong ${Math.round(banSeconds / 60)} phút để bảo vệ hệ thống.`,
-          retryAfter: banSeconds,
-          status: 'IP_JAILED'
+          error: 'Request temporarily blocked.'
         });
       }
 
-      res.setHeader('Retry-After', resetTime);
       return res.status(429).json({
         success: false,
-        error: `⚠️ [Anti-Req Warning] Bạn đang gửi yêu cầu quá nhanh (${record.count}/${tierConfig.max} req/phút). Vui lòng chậm lại và thử lại sau ${resetTime} giây.`,
-        retryAfter: resetTime,
-        status: 'RATE_LIMITED'
+        error: 'Too many requests.'
       });
     }
 

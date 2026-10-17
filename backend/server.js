@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const { execFile } = require('child_process');
 const dotenv = require('dotenv');
 const dns = require('dns');
@@ -56,6 +57,8 @@ dotenv.config({ path: path.join(__dirname, '.env'), override: true });
 dotenv.config({ path: path.join(__dirname, '../.env'), override: true });
 
 const app = express();
+app.disable('x-powered-by');
+app.set('etag', false);
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3000;
 const AI_PROVIDER = (process.env.AI_PROVIDER || 'ollama').toLowerCase();
@@ -78,12 +81,60 @@ const productionFrontendDir = path.join(ROOT_DIR, 'frontend-dist');
 const servedFrontendDir = process.env.NODE_ENV === 'production' && fs.existsSync(productionFrontendDir)
   ? productionFrontendDir
   : frontendDir;
+const privateMedia = new Map();
+const PRIVATE_MEDIA_TTL_MS = 15 * 60 * 1000;
 const WORKSPACE_DIR = path.resolve(__dirname, '../workspace');
 const CHAT_HISTORY_FILE = path.join(__dirname, 'chat-history.json');
 const CHAT_HISTORIES_DIR = path.join(__dirname, 'chat_histories');
 if (!fs.existsSync(CHAT_HISTORIES_DIR)) {
   fs.mkdirSync(CHAT_HISTORIES_DIR, { recursive: true });
 }
+
+const PRIVATE_MEDIA_HOSTS = new Set([
+  'image.pollinations.ai',
+  'replicate.delivery',
+  'storage.googleapis.com',
+  'r2.cloudflarestorage.com',
+]);
+
+function isAllowedPrivateMediaHost(hostname) {
+  const host = hostname.toLowerCase();
+  return PRIVATE_MEDIA_HOSTS.has(host)
+    || host.endsWith('.replicate.delivery')
+    || host.endsWith('.storage.googleapis.com')
+    || host.endsWith('.r2.cloudflarestorage.com');
+}
+
+function createPrivateMediaUrl(req, upstreamUrl, mediaType) {
+  const url = new URL(upstreamUrl);
+  if (url.protocol !== 'https:' || !isAllowedPrivateMediaHost(url.hostname)) {
+    throw new Error('Unsupported media source.');
+  }
+  const ownerId = req.user?.id || (isCreatorRequest(req) ? 'creator' : null);
+  if (!ownerId) throw new Error('Authenticated media owner required.');
+
+  const id = crypto.randomBytes(32).toString('base64url');
+  privateMedia.set(id, { url: url.href, mediaType, ownerId, expiresAt: Date.now() + PRIVATE_MEDIA_TTL_MS });
+  return `/api/media/${id}`;
+}
+
+function createPollinationsImagePath(prompt, width = 1024, height = 1024, seed = '') {
+  const query = new URLSearchParams({
+    prompt,
+    width: String(width),
+    height: String(height),
+    ...(seed ? { seed: String(seed) } : {}),
+  });
+  return `/api/image/proxy?${query.toString()}`;
+}
+
+const privateMediaCleanup = setInterval(() => {
+  const now = Date.now();
+  for (const [id, item] of privateMedia) {
+    if (item.expiresAt <= now) privateMedia.delete(id);
+  }
+}, 60 * 1000);
+privateMediaCleanup.unref();
 
 // Ensure workspace directory exists with sample starter files
 if (!fs.existsSync(WORKSPACE_DIR)) {
@@ -662,12 +713,14 @@ function clearSessionCookies(res) {
   ]);
 }
 
-const SECRET_PATTERN = /(?:sk-[A-Za-z0-9_-]{16,}|gsk_[A-Za-z0-9_-]{16,}|AIza[A-Za-z0-9_-]{20,}|r8_[A-Za-z0-9_-]{16,}|Bearer\s+[A-Za-z0-9._-]{20,})/gi;
-const SECRET_ASSIGNMENT_PATTERN = /(API_KEY|TOKEN|SECRET|SMTP_PASS)\s*[=:]\s*[^\s,;]+/gi;
+const SECRET_PATTERN = /(?:sk-[A-Za-z0-9_-]{16,}|gsk_[A-Za-z0-9_-]{16,}|AIza[A-Za-z0-9_-]{20,}|r8_[A-Za-z0-9_-]{16,}|hf_[A-Za-z0-9]{20,}|Bearer\s+[A-Za-z0-9._-]{20,})/gi;
+const SECRET_ASSIGNMENT_PATTERN = /((?:API[_-]?KEY|ACCESS[_-]?TOKEN|REFRESH[_-]?TOKEN|TOKEN|SECRET|SMTP[_-]?PASS|PASSWORD|AUTHORIZATION)\s*[=:]\s*)(?:"[^"]*"|'[^']*'|[^\s,;]+)/gi;
+const SECRET_URL_PARAMETER_PATTERN = /([?&](?:token|access_token|api[_-]?key|key|signature|x-amz-signature|x-amz-credential)=)[^&#\s]+/gi;
 function redactSecrets(value) {
   return String(value)
     .replace(SECRET_PATTERN, '[REDACTED]')
-    .replace(SECRET_ASSIGNMENT_PATTERN, '$1=[REDACTED]');
+    .replace(SECRET_ASSIGNMENT_PATTERN, '$1[REDACTED]')
+    .replace(SECRET_URL_PARAMETER_PATTERN, '$1[REDACTED]');
 }
 
 for (const method of ['error', 'warn']) {
@@ -700,8 +753,8 @@ app.use((req, res, next) => {
     "script-src 'self' 'unsafe-inline' https://accounts.google.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' data: https://fonts.gstatic.com",
-    "img-src 'self' data: blob: https://api.dicebear.com https://image.pollinations.ai https://*.googleusercontent.com",
-    "media-src 'self' blob: https://replicate.delivery https://*.replicate.delivery",
+    "img-src 'self' data: blob: https://api.dicebear.com https://*.googleusercontent.com",
+    "media-src 'self' blob:",
     "connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com https://www.googleapis.com",
     "frame-src https://accounts.google.com",
   ].join('; '));
@@ -753,10 +806,7 @@ app.use((req, res, next) => {
 
 // Endpoint kiểm tra trạng thái và thông số bảo mật Anti-Req
 app.get('/api/security/stats', requireCreatorAuth, (req, res) => {
-  if (antiReq && antiReq.getSecurityStats) {
-    return res.json({ success: true, stats: antiReq.getSecurityStats() });
-  }
-  res.json({ success: false, message: 'Anti-Req security is not enabled.' });
+  res.json({ success: true, active: true });
 });
 
 const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: 20000 }) : null;
@@ -1102,6 +1152,92 @@ app.get('/api/health', (req, res) => {
   res.json({ ok: true });
 });
 
+app.get('/api/media/:id', async (req, res) => {
+  const media = privateMedia.get(req.params.id);
+  if (!media || media.expiresAt <= Date.now()) {
+    privateMedia.delete(req.params.id);
+    return res.status(404).json({ success: false, error: 'Media not found.' });
+  }
+
+  const session = getSession(req);
+  const ownerId = session?.user.id || (media.ownerId === 'creator' ? 'creator' : null);
+  if (!ownerId || ownerId !== media.ownerId) {
+    return res.status(404).json({ success: false, error: 'Media not found.' });
+  }
+
+  let upstream;
+  let upstreamUrl = new URL(media.url);
+  const range = req.get('range');
+  const rangeHeader = range && /^bytes=\d*-\d*$/.test(range) ? range : null;
+  try {
+    for (let redirects = 0; redirects <= 3; redirects += 1) {
+      if (upstreamUrl.protocol !== 'https:' || !isAllowedPrivateMediaHost(upstreamUrl.hostname)) {
+        return res.status(502).json({ success: false, error: 'Media unavailable.' });
+      }
+
+      upstream = await fetch(upstreamUrl, {
+        redirect: 'manual',
+        signal: AbortSignal.timeout(60000),
+        headers: rangeHeader ? { Range: rangeHeader } : {},
+      });
+
+      if (![301, 302, 303, 307, 308].includes(upstream.status)) break;
+      const location = upstream.headers.get('location');
+      await upstream.body?.cancel();
+      if (!location || redirects === 3) {
+        return res.status(502).json({ success: false, error: 'Media unavailable.' });
+      }
+      upstreamUrl = new URL(location, upstreamUrl);
+    }
+
+    const contentType = (upstream.headers.get('content-type') || '').split(';', 1)[0].toLowerCase();
+    const allowedType = media.mediaType === 'video'
+      ? new Set(['video/mp4', 'video/webm']).has(contentType)
+      : new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']).has(contentType);
+    const maxBytes = media.mediaType === 'video' ? 150 * 1024 * 1024 : 12 * 1024 * 1024;
+    const contentLength = Number.parseInt(upstream.headers.get('content-length') || '0', 10);
+    if (![200, 206].includes(upstream.status) || !allowedType || contentLength > maxBytes || !upstream.body) {
+      await upstream.body?.cancel();
+      return res.status(502).json({ success: false, error: 'Media unavailable.' });
+    }
+
+    res.status(upstream.status);
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('Content-Disposition', 'inline');
+    res.setHeader('Accept-Ranges', 'bytes');
+    if (contentLength > 0) res.setHeader('Content-Length', contentLength);
+    const contentRange = upstream.headers.get('content-range');
+    if (upstream.status === 206 && contentRange && /^bytes \d+-\d+\/(?:\d+|\*)$/.test(contentRange)) {
+      res.setHeader('Content-Range', contentRange);
+    }
+
+    const reader = upstream.body.getReader();
+    let bytesSent = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytesSent += value.byteLength;
+      if (bytesSent > maxBytes || res.destroyed) {
+        await reader.cancel();
+        if (!res.destroyed) res.destroy();
+        return;
+      }
+      if (!res.write(Buffer.from(value))) {
+        await new Promise((resolve) => {
+          res.once('drain', resolve);
+          res.once('close', resolve);
+        });
+      }
+    }
+    res.end();
+  } catch (error) {
+    await upstream?.body?.cancel().catch(() => {});
+    if (!res.headersSent) return res.status(502).json({ success: false, error: 'Media unavailable.' });
+    res.destroy();
+  }
+});
+
 // 1. Endpoint Tạo Hình Ảnh Nghệ Thuật AI (Replicate Flux / SDXL Pro Engine & Fast Fallback)
 app.post('/api/image/generate', requireUserAuth, async (req, res) => {
   try {
@@ -1112,12 +1248,10 @@ app.post('/api/image/generate', requireUserAuth, async (req, res) => {
 
     const cleanPrompt = prompt.trim();
     let imageUrl = null;
-    let providerUsed = 'pollinations';
 
     // Thử tạo ảnh bằng Replicate nếu client đã sẵn sàng và được cấu hình
     if (replicateClient && engine !== 'pollinations') {
       try {
-        console.log(`[Replicate] Generating image for prompt: "${cleanPrompt.slice(0, 50)}..."`);
         const output = await replicateClient.run(
           "black-forest-labs/flux-schnell",
           {
@@ -1132,22 +1266,19 @@ app.post('/api/image/generate', requireUserAuth, async (req, res) => {
         );
 
         if (Array.isArray(output) && output.length > 0) {
-          imageUrl = typeof output[0] === 'string' ? output[0] : (output[0].url ? output[0].url() : String(output[0]));
-          providerUsed = 'replicate-flux-schnell';
+          const outputUrl = typeof output[0] === 'string' ? output[0] : (typeof output[0]?.url === 'function' ? output[0].url() : '');
+          if (outputUrl) imageUrl = createPrivateMediaUrl(req, outputUrl, 'image');
         } else if (typeof output === 'string') {
-          imageUrl = output;
-          providerUsed = 'replicate-flux-schnell';
+          imageUrl = createPrivateMediaUrl(req, output, 'image');
         }
       } catch (repErr) {
-        console.warn('[Replicate Image Error - Switching to High-Res Fallback]:', repErr.message);
+        console.warn('[Image generation] Primary media request failed.');
       }
     }
 
     // Fallback thông minh đảm bảo người dùng LUÔN CÓ ẢNH ĐẸP NGAY LẬP TỨC
     if (!imageUrl) {
-      const encodedPrompt = encodeURIComponent(cleanPrompt);
-      imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&nologo=true&enhance=true&model=flux`;
-      providerUsed = 'pollinations-flux-hd';
+      imageUrl = createPollinationsImagePath(cleanPrompt, width, height, seed);
     }
 
     res.json({
@@ -1155,7 +1286,6 @@ app.post('/api/image/generate', requireUserAuth, async (req, res) => {
       url: imageUrl,
       imageUrl: imageUrl,
       prompt: cleanPrompt,
-      provider: providerUsed,
       width,
       height,
       seed,
@@ -1202,7 +1332,7 @@ app.get('/api/image/proxy', requireUserAuth, async (req, res) => {
     res.setHeader('Cache-Control', 'private, no-store');
     res.type(contentType).send(image);
   } catch (error) {
-    console.warn('[Image proxy] Upstream request failed:', error);
+    console.warn('[Image proxy] Upstream request failed.');
     res.status(502).json({ success: false, error: 'Image generation failed.' });
   }
 });
@@ -1244,8 +1374,7 @@ app.post('/api/image/edit-outfit', requireUserAuth, async (req, res) => {
 
     const cleanPrompt = prompt.trim();
     const fullPrompt = `high-end fashion virtual try-on, ${cleanPrompt}, style: ${style}, elegant fashion editorial photography, bespoke tailoring, fine textile details, keeping natural face and identity, realistic studio lighting, 8k resolution, masterpiece`;
-    const encodedPrompt = encodeURIComponent(fullPrompt);
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&nologo=true&enhance=true&model=flux`;
+    const imageUrl = createPollinationsImagePath(fullPrompt, width, height, seed);
 
     res.json({
       success: true,
@@ -1280,8 +1409,7 @@ app.post('/api/image/edit-body', requireUserAuth, async (req, res) => {
 
     const cleanPrompt = prompt.trim();
     const fullPrompt = `full body aesthetic sculpting, ${cleanPrompt}, body physique: ${bodyType}, posture: ${pose}, golden ratio proportions, natural anatomy, preserving original facial identity, commercial high-fashion photoshoot, soft volumetric lighting, 8k uhd`;
-    const encodedPrompt = encodeURIComponent(fullPrompt);
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&nologo=true&enhance=true&model=flux`;
+    const imageUrl = createPollinationsImagePath(fullPrompt, width, height, seed);
 
     res.json({
       success: true,
@@ -1310,11 +1438,9 @@ app.post('/api/video/generate', requireUserAuth, async (req, res) => {
 
     const cleanPrompt = prompt.trim();
     let videoUrl = null;
-    let providerUsed = 'replicate';
 
     if (replicateClient) {
       try {
-        console.log(`[Replicate] Generating Video for prompt: "${cleanPrompt.slice(0, 50)}..."`);
         // Sử dụng model Wan 2.1 / Luma hoặc video generation
         const output = await replicateClient.run(
           "wavespeedai/wan-2.1-t2v-480p",
@@ -1334,22 +1460,23 @@ app.post('/api/video/generate', requireUserAuth, async (req, res) => {
           videoUrl = output.url();
         }
       } catch (videoErr) {
-        console.warn('[Replicate Video Error]:', videoErr.message);
+        console.warn('[Video generation] Media request failed.');
         return res.status(502).json({ success: false, error: 'Video generation failed.' });
       }
     } else {
       return res.status(503).json({
         success: false,
-        error: 'Chưa cấu hình REPLICATE_API_TOKEN trên hệ thống.'
+        error: 'Video generation is unavailable.'
       });
     }
+
+    if (!videoUrl) return res.status(502).json({ success: false, error: 'Video generation failed.' });
+    videoUrl = createPrivateMediaUrl(req, videoUrl, 'video');
 
     res.json({
       success: true,
       url: videoUrl,
       videoUrl: videoUrl,
-      prompt: cleanPrompt,
-      provider: providerUsed,
       duration,
       aspect_ratio
     });
@@ -2122,7 +2249,7 @@ app.post('/api/chat', requireUserAuth, async (req, res) => {
         result.reply = downgradeFileWriteTagsToMarkdown(result.reply);
       }
     }
-    return res.json(result);
+    return res.json({ success: true, reply: result?.reply || '' });
   } catch (error) {
     console.error('AI request error:', error);
     const message = error?.response?.data?.error?.message || error.message || 'Unknown error';
@@ -2667,8 +2794,7 @@ app.get('/api/realtime/events', (req, res) => {
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
-    'Access-Control-Allow-Origin': '*'
+    'Connection': 'keep-alive'
   });
   res.write(': connected\n\n');
   sseClients.add(res);
