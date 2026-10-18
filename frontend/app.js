@@ -2232,9 +2232,7 @@ async function sendMessage(message) {
         boostLevel: currentBoostLevel,
         mode: currentMode,
         provider: currentProvider,
-        image: attachedImages[0] || null,
         images: attachedImages,
-        isCreator: isCreatorMode,
       }),
     });
 
@@ -4687,7 +4685,5 @@ document.getElementById('tabConsoleBtn')?.addEventListener('click', () => {
     terminalInput?.focus();
   }, 100);
 });
-
-
 
 

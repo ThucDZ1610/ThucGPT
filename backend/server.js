@@ -5,6 +5,8 @@ const fs = require('fs');
 const crypto = require('crypto');
 const { execFile } = require('child_process');
 const dotenv = require('dotenv');
+dotenv.config({ path: path.join(__dirname, '.env') });
+dotenv.config({ path: path.join(__dirname, '../.env') });
 const dns = require('dns');
 const OpenAI = require('openai');
 let Replicate;
@@ -22,6 +24,11 @@ try {
   console.warn('[Server] ws package not found, falling back to SSE');
 }
 const thucgpt = require('./thucgpt');
+const {
+  constantTimeEqual,
+  createAiQuotaMiddleware,
+  validateChatPayload,
+} = require('./security-controls');
 let keyManager;
 try {
   keyManager = require('./key-manager');
@@ -52,14 +59,16 @@ try {
   dns.setDefaultResultOrder('ipv4first');
 } catch (e) {}
 
-// Load environment variables from both local and root .env
-dotenv.config({ path: path.join(__dirname, '.env'), override: true });
-dotenv.config({ path: path.join(__dirname, '../.env'), override: true });
-
 const app = express();
 app.disable('x-powered-by');
 app.set('etag', false);
 const server = http.createServer(app);
+const aiQuota = createAiQuotaMiddleware();
+const validateChatRequest = (req, res, next) => {
+  const error = validateChatPayload(req.body);
+  if (error) return res.status(400).json({ success: false, error });
+  next();
+};
 const PORT = process.env.PORT || 3000;
 const AI_PROVIDER = (process.env.AI_PROVIDER || 'ollama').toLowerCase();
 app.set('trust proxy', Number.parseInt(process.env.TRUST_PROXY_HOPS || '0', 10));
@@ -535,25 +544,12 @@ setInterval(() => {
 function isCreatorRequest(req) {
   if (!req) return false;
   const authHeader = req.headers?.['x-creator-passcode'] || req.headers?.['x-bypass-key'] || '';
-  const bodyPasscode = req.body?.passcode || '';
-  const queryPasscode = req.query?.passcode || '';
-
-  // 1. Kiểm tra Mật mã Tối cao vĩnh viễn của Chủ nhân Thức
-  if (
-    (authHeader && authHeader === thucgpt.CREATOR_PASSCODE) ||
-    (bodyPasscode && bodyPasscode === thucgpt.CREATOR_PASSCODE) ||
-    (queryPasscode && queryPasscode === thucgpt.CREATOR_PASSCODE)
-  ) {
+  const candidateKey = String(authHeader).trim();
+  if (thucgpt.CREATOR_PASSCODE && candidateKey && constantTimeEqual(candidateKey, thucgpt.CREATOR_PASSCODE)) {
     return true;
   }
 
-  // 2. Kiểm tra Key Tự Động Sửa Code Project (ThyXinhGai)
-  const candidateKey = (authHeader || bodyPasscode || queryPasscode || '').trim();
-  if (candidateKey && (candidateKey === 'ThyXinhGai' || candidateKey.toUpperCase() === 'THYXINHGAI')) {
-    return true;
-  }
-
-  // 3. Kiểm tra Mã Bypass Tạm thời (Hiệu lực 60 phút do key.js sinh ra)
+  // Kiểm tra mã bypass tạm thời.
   if (candidateKey && keyManager.validateBypassKey(candidateKey).valid) {
     return true;
   }
@@ -786,7 +782,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '50mb', strict: true }));
 app.use(express.static(servedFrontendDir, { index: false }));
 
 app.use((req, res, next) => {
@@ -1239,7 +1235,7 @@ app.get('/api/media/:id', async (req, res) => {
 });
 
 // 1. Endpoint Tạo Hình Ảnh Nghệ Thuật AI (Replicate Flux / SDXL Pro Engine & Fast Fallback)
-app.post('/api/image/generate', requireUserAuth, async (req, res) => {
+app.post('/api/image/generate', requireUserAuth, aiQuota, async (req, res) => {
   try {
     const { prompt, width = 1024, height = 1024, seed = Math.floor(Math.random() * 1000000), engine = 'auto' } = req.body || {};
     if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
@@ -1295,7 +1291,7 @@ app.post('/api/image/generate', requireUserAuth, async (req, res) => {
   }
 });
 
-app.get('/api/image/proxy', requireUserAuth, async (req, res) => {
+app.get('/api/image/proxy', requireUserAuth, aiQuota, async (req, res) => {
   try {
     const prompt = typeof req.query.prompt === 'string' ? req.query.prompt.trim() : '';
     if (!prompt || prompt.length > 4000) {
@@ -1338,7 +1334,7 @@ app.get('/api/image/proxy', requireUserAuth, async (req, res) => {
 });
 
 // 2. Endpoint Làm Nét & Nâng Cấp Độ Phân Giải Ảnh (Pillow Lanczos + UnsharpMask)
-app.post('/api/image/enhance', requireUserAuth, async (req, res) => {
+app.post('/api/image/enhance', requireUserAuth, aiQuota, async (req, res) => {
   try {
     const { image, scale = 2, sharpness = 1.6, contrast = 1.06 } = req.body || {};
     if (!image) {
@@ -1359,7 +1355,7 @@ app.post('/api/image/enhance', requireUserAuth, async (req, res) => {
 });
 
 // 3. Endpoint Thay Đổi Trang Phục Thời Trang AI (Virtual Try-On / Fashion Swap Engine)
-app.post('/api/image/edit-outfit', requireUserAuth, async (req, res) => {
+app.post('/api/image/edit-outfit', requireUserAuth, aiQuota, async (req, res) => {
   try {
     const { prompt, style = 'bespoke elegance', gender = 'unisex', width = 1024, height = 1024, seed = Math.floor(Math.random() * 1000000) } = req.body || {};
     if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
@@ -1394,7 +1390,7 @@ app.post('/api/image/edit-outfit', requireUserAuth, async (req, res) => {
 });
 
 // 4. Endpoint Chỉnh Sửa Hình Thể & Vóc Dáng Toàn Thân AI (Body Sculpting & Styling Engine)
-app.post('/api/image/edit-body', requireUserAuth, async (req, res) => {
+app.post('/api/image/edit-body', requireUserAuth, aiQuota, async (req, res) => {
   try {
     const { prompt, bodyType = 'athletic fit', pose = 'confident posture', width = 1024, height = 1024, seed = Math.floor(Math.random() * 1000000) } = req.body || {};
     if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
@@ -1429,7 +1425,7 @@ app.post('/api/image/edit-body', requireUserAuth, async (req, res) => {
 });
 
 // 5. Endpoint Tạo Video AI (Replicate Text-to-Video Engine & AI Video Animation)
-app.post('/api/video/generate', requireUserAuth, async (req, res) => {
+app.post('/api/video/generate', requireUserAuth, aiQuota, async (req, res) => {
   try {
     const { prompt, duration = 5, aspect_ratio = '16:9' } = req.body || {};
     if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
@@ -1510,17 +1506,8 @@ app.post('/api/auth/verify-creator', (req, res) => {
     return res.json({ success: false, isCreator: false });
   }
   const cleanCode = code.trim();
-  if (cleanCode === thucgpt.CREATOR_PASSCODE) {
+  if (thucgpt.CREATOR_PASSCODE && constantTimeEqual(cleanCode, thucgpt.CREATOR_PASSCODE)) {
     return res.json({ success: true, isCreator: true, type: 'creator', label: 'Mật Mã Tối Cao Chủ Nhân Thức 👑' });
-  }
-  if (cleanCode === 'ThyXinhGai' || cleanCode.toUpperCase() === 'THYXINHGAI') {
-    return res.json({
-      success: true,
-      isCreator: true,
-      type: 'auto_project_edit',
-      label: 'Quyền Tự Động Sửa Code Hệ Thống ⚡',
-      description: 'AI được cấp quyền tự động phân tích và trực tiếp sửa code theo yêu cầu!'
-    });
   }
   const bypassCheck = keyManager.validateBypassKey(cleanCode);
   if (bypassCheck.valid) {
@@ -1703,11 +1690,11 @@ function requireAuthenticatedUser(req, res, next) {
 }
 
 function requireUserAuth(req, res, next) {
-  // Cho phép nếu có Master Creator Passcode hoặc Key x2
+  // Chỉ chấp nhận thông tin xác thực quản trị trong header, không trong query/body.
   const creatorKey = req.headers['x-creator-passcode'] || req.headers['x-bypass-key'];
   if (creatorKey) {
     const clean = String(creatorKey).trim();
-    if (clean === thucgpt.CREATOR_PASSCODE) return next();
+    if (thucgpt.CREATOR_PASSCODE && constantTimeEqual(clean, thucgpt.CREATOR_PASSCODE)) return next();
     if (keyManager && keyManager.validateBypassKey(clean)?.valid) return next();
   }
 
@@ -1866,23 +1853,17 @@ function downgradeFileWriteTagsToMarkdown(replyText = '') {
 
 
 // Unified Chat & Vision Execution Handler
-async function handleChatExecution({ provider, message, history, boostLevel, mode, image, images, isCreator = false, res = null, req = null }) {
-  const normImages = normalizeImagesPayload(images || image);
+async function handleChatExecution({ provider, message, history, boostLevel, mode, image, images, res = null, req = null }) {
+  const normImages = normalizeImagesPayload(images?.length ? images : image);
   const normImg = normImages[0] || null;
   const isStream = Boolean(res);
 
   const trimmedMsg = String(message || '').trim();
-  const containsPasscode = trimmedMsg.includes(thucgpt.CREATOR_PASSCODE);
-  const reqPasscode = req?.headers?.['x-creator-passcode'] || req?.headers?.['x-bypass-key'] || req?.body?.passcode || '';
-  const hasValidPasscode = reqPasscode === thucgpt.CREATOR_PASSCODE || containsPasscode;
-
-  // Kiểm tra mã Bypass Tạm Thời (Tạo từ key.js, hiệu lực 30 phút)
-  const tempKeyMatch = trimmedMsg.match(/BYPASS-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}/i);
-  const candidateTempKey = tempKeyMatch ? tempKeyMatch[0] : (String(reqPasscode).toUpperCase().startsWith('BYPASS-') ? reqPasscode : null);
-  const tempKeyValidation = candidateTempKey ? keyManager.validateBypassKey(candidateTempKey) : null;
-  const hasValidTempKey = Boolean(tempKeyValidation && tempKeyValidation.valid);
-
-  const effectiveIsCreator = Boolean(isCreator || hasValidPasscode || hasValidTempKey || isCreatorRequest(req));
+  const reqPasscode = req?.headers?.['x-creator-passcode'] || req?.headers?.['x-bypass-key'] || '';
+  const hasValidPasscode = Boolean(thucgpt.CREATOR_PASSCODE
+    && reqPasscode
+    && constantTimeEqual(reqPasscode, thucgpt.CREATOR_PASSCODE));
+  const effectiveIsCreator = Boolean(hasValidPasscode || isCreatorRequest(req));
 
   // Thiết lập streamTarget có gắn bộ lọc chặn sinh file nếu khách thường nhận phản hồi từ chối
   let streamTarget = res;
@@ -1907,74 +1888,6 @@ async function handleChatExecution({ provider, message, history, boostLevel, mod
       setHeader: (k, v) => res.setHeader(k, v),
       get headersSent() { return res.headersSent; },
     };
-  }
-
-  // If user sends specifically the passcode (or e.g. "mật mã ...")
-  const isPurePasscode = containsPasscode && (
-    trimmedMsg === thucgpt.CREATOR_PASSCODE ||
-    trimmedMsg.replace(/^(mật mã|mật khẩu|passcode|code|key)\s*/i, '').trim() === thucgpt.CREATOR_PASSCODE
-  );
-
-  if (isPurePasscode) {
-    const confirmationText = thucgpt.getCreatorConfirmationMessage();
-    if (isStream) {
-      res.write(confirmationText);
-      return;
-    } else {
-      return { reply: confirmationText, provider, boostLevel, isCreator: true };
-    }
-  }
-
-  // Nếu người dùng gửi key "ThyXinhGai" vào chat
-  const isPureThyKey = /^(mã|mật mã|key|passcode)?\s*ThyXinhGai\s*$/i.test(trimmedMsg);
-  if (isPureThyKey) {
-    const thyConfirmation = `⚡ **XÁC NHẬN KÍCH HOẠT CHẾ ĐỘ TỰ ĐỘNG SỬA CODE THÀNH CÔNG!** ⚡\n\n` +
-      `Xin chào bạn! Hệ thống đã xác thực mã bảo mật thành công.\n\n` +
-      `🛠️ **ĐẶC QUYỀN ĐÃ ĐƯỢC KÍCH HOẠT:**\n` +
-      `- AI được cấp toàn quyền **tự động phân tích toàn bộ mã nguồn hệ thống**.\n` +
-      `- Tự động đọc mã nguồn, phân tích lỗi và **trực tiếp chỉnh sửa/cập nhật file code** theo đúng yêu cầu của bạn!\n` +
-      `- Mọi chỉ thị sửa đổi file/thư mục đều sẽ được tự động áp dụng trực tiếp và an toàn.\n\n` +
-      `Hãy nêu yêu cầu bạn muốn sửa code hoặc thêm tính năng nào, tôi sẽ thực hiện ngay!`;
-    if (isStream) {
-      res.write(thyConfirmation);
-      return;
-    } else {
-      return { reply: thyConfirmation, provider, boostLevel, isCreator: true, keyType: 'auto_project_edit' };
-    }
-  }
-
-  // Người dùng gửi riêng mã Bypass tạm thời để kích hoạt quyền
-  const isPureTempKey = tempKeyMatch && (
-    trimmedMsg.toUpperCase() === tempKeyMatch[0].toUpperCase() ||
-    /^(mã|mật mã|key|passcode|bypass)?\s*BYPASS-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}\s*$/i.test(trimmedMsg)
-  );
-
-  if (isPureTempKey) {
-    if (tempKeyValidation && tempKeyValidation.valid) {
-      const confirmTempKey = `👑 **XÁC NHẬN MÃ BYPASS TẠM THỜI THÀNH CÔNG!** 👑\n\n- **Mã xác thực:** \`${tempKeyValidation.key}\`\n- **Thời gian hiệu lực còn lại:** **${tempKeyValidation.remainingFormatted}** (Hết hạn lúc: ${tempKeyValidation.expiresStr})\n- **Đặc quyền:** **Bypass 100% Tối Cao Đã Kích Hoạt** đồng loạt trên toàn bộ các mô hình AI (\`ThucGPT\`, \`ThucThinking\`, \`Gemini\`, \`DeepSeek\`, \`OpenAI\`, \`Groq\`, \`Ollama\`).\n\nBạn có toàn quyền sử dụng và điều khiển hệ thống AI trong thời gian hiệu lực này!`;
-      if (isStream) {
-        res.write(confirmTempKey);
-        return;
-      } else {
-        return { reply: confirmTempKey, provider, boostLevel, isCreator: true, bypassKey: tempKeyValidation.key, remainingFormatted: tempKeyValidation.remainingFormatted };
-      }
-    } else if (tempKeyValidation && tempKeyValidation.expired) {
-      const expiredMsg = `⚠️ **MÃ BYPASS TẠM THỜI ĐÃ HẾT HẠN!**\n\nMã **${tempKeyValidation.key}** chỉ có hiệu lực trong 30 phút và đã hết hạn lúc **${tempKeyValidation.expiredAt}**.\nVui lòng chạy lệnh \`node key.js\` trên terminal máy tính để tạo mã mới!`;
-      if (isStream) {
-        res.write(expiredMsg);
-        return;
-      } else {
-        return { reply: expiredMsg, provider, boostLevel, isCreator: false, expired: true };
-      }
-    } else {
-      const notFoundMsg = `⚠️ **MÃ BYPASS ĐÃ HẾT HẠN HOẶC KHÔNG HỢP LỆ!**\n\nMã **${candidateTempKey || trimmedMsg}** không còn hiệu lực trong hệ thống (mỗi mã chỉ có hiệu lực trong vòng đúng 30 phút kể từ lúc tạo).\n\nVui lòng mở terminal và chạy lệnh:\n\`\`\`bash\nnode key.js\n\`\`\`\nđể tạo mã Bypass mới 30 phút!`;
-      if (isStream) {
-        res.write(notFoundMsg);
-        return;
-      } else {
-        return { reply: notFoundMsg, provider, boostLevel, isCreator: false, expired: true };
-      }
-    }
   }
 
   // ==========================================================================
@@ -2225,9 +2138,9 @@ async function handleChatExecution({ provider, message, history, boostLevel, mod
   }
 }
 
-app.post('/api/chat', requireUserAuth, async (req, res) => {
+app.post('/api/chat', requireUserAuth, validateChatRequest, aiQuota, async (req, res) => {
   try {
-    let { message = '', history = [], boostLevel = 1, mode = 'code', provider: reqProvider, image = null, images = null, isCreator = false } = req.body;
+    let { message = '', history = [], boostLevel = 1, mode = 'code', provider: reqProvider, image = null, images = null } = req.body;
     const provider = normalizeProvider(reqProvider);
     const cleanHistory = normalizeHistory(history);
     const hasAnyImage = Boolean(image || (Array.isArray(images) && images.length > 0));
@@ -2240,7 +2153,7 @@ app.post('/api/chat', requireUserAuth, async (req, res) => {
       message = 'Hãy phân tích chi tiết các hình ảnh này, tìm lỗi và cung cấp mã nguồn chuẩn hoàn chỉnh để sửa lỗi hoặc xây dựng theo yêu cầu.';
     }
 
-    const result = await handleChatExecution({ provider, message, history: cleanHistory, boostLevel, mode, image, images, isCreator, res: null, req });
+    const result = await handleChatExecution({ provider, message, history: cleanHistory, boostLevel, mode, image, images, res: null, req });
     if (result && result.reply) {
       if (!result.isCreator) {
         result.reply = sanitizeNonCreatorOutput(result.reply, false);
@@ -2257,9 +2170,9 @@ app.post('/api/chat', requireUserAuth, async (req, res) => {
   }
 });
 
-app.post('/api/chat/stream', requireUserAuth, async (req, res) => {
+app.post('/api/chat/stream', requireUserAuth, validateChatRequest, aiQuota, async (req, res) => {
   try {
-    let { message = '', history = [], boostLevel = 1, mode = 'code', provider: reqProvider, image = null, images = null, isCreator = false } = req.body;
+    let { message = '', history = [], boostLevel = 1, mode = 'code', provider: reqProvider, image = null, images = null } = req.body;
     const provider = normalizeProvider(reqProvider);
     const cleanHistory = normalizeHistory(history);
     const hasAnyImage = Boolean(image || (Array.isArray(images) && images.length > 0));
@@ -2275,7 +2188,7 @@ app.post('/api/chat/stream', requireUserAuth, async (req, res) => {
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache');
 
-    await handleChatExecution({ provider, message, history: cleanHistory, boostLevel, mode, image, images, isCreator, res, req });
+    await handleChatExecution({ provider, message, history: cleanHistory, boostLevel, mode, image, images, res, req });
     return res.end();
   } catch (error) {
     console.error('AI stream error:', error);

@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { constantTimeEqual } = require('./security-controls');
 
 // Danh sách các đường dẫn lưu trữ key trên toàn máy tính (để dù key.js ở đâu cũng đọc được)
 function getStorageFiles() {
@@ -72,11 +73,6 @@ function cleanupExpiredKeys() {
 /**
  * Tạo mã Bypass ngẫu nhiên
  */
-const PROJECT_EDIT_KEY = 'ThyXinhGai';
-
-/**
- * Tạo mã Bypass ngẫu nhiên
- */
 function generateRandomCode() {
   const bytes = crypto.randomBytes(6).toString('hex').toUpperCase();
   return `BYPASS-${bytes.slice(0, 4)}-${bytes.slice(4, 8)}-${bytes.slice(8, 12)}`;
@@ -122,7 +118,8 @@ function validateBypassKey(inputKey = '') {
   const data = readKeysData();
   const now = Date.now();
 
-  const found = data.keys.find((k) => k.key.toUpperCase() === cleanKey);
+  const found = data.keys.find((k) => typeof k.key === 'string'
+    && constantTimeEqual(k.key.toUpperCase(), cleanKey));
 
   if (!found) {
     return { valid: false, notFound: true, reason: 'Mã không tồn tại' };
@@ -171,7 +168,6 @@ function revokeKey(targetKey = '') {
 }
 
 module.exports = {
-  PROJECT_EDIT_KEY,
   generateBypassKey,
   validateBypassKey,
   getActiveKeys,

@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const JavaScriptObfuscator = require('javascript-obfuscator');
 const { minify } = require('html-minifier-terser');
 const CleanCSS = require('clean-css');
@@ -37,6 +38,32 @@ function walk(directory) {
     const fullPath = path.join(directory, entry.name);
     return entry.isDirectory() ? walk(fullPath) : [fullPath];
   });
+}
+
+function addSubresourceIntegrity(htmlPath) {
+  const html = fs.readFileSync(htmlPath, 'utf8');
+  const updated = html.replace(/<(script|link)\b([^>]*)>/gi, (tag, name, attributes) => {
+    const isScript = name.toLowerCase() === 'script';
+    const isStylesheet = /\brel=["']stylesheet["']/i.test(attributes);
+    if (isScript && !/\bsrc=/i.test(attributes)) return tag;
+    if (!isScript && !isStylesheet) return tag;
+
+    const sourceAttribute = isScript ? 'src' : 'href';
+    const match = attributes.match(new RegExp(`\\b${sourceAttribute}=["']([^"']+)["']`, 'i'));
+    if (!match || !match[1].startsWith('/') || match[1].startsWith('//')) return tag;
+
+    const localPath = decodeURIComponent(match[1].split(/[?#]/, 1)[0]);
+    const assetPath = path.resolve(outputDir, `.${localPath}`);
+    const relativePath = path.relative(outputDir, assetPath);
+    if (relativePath.startsWith('..') || path.isAbsolute(relativePath) || !fs.existsSync(assetPath)) return tag;
+
+    const integrity = `sha384-${crypto.createHash('sha384').update(fs.readFileSync(assetPath)).digest('base64')}`;
+    const nextAttributes = /\bintegrity=["'][^"']*["']/i.test(attributes)
+      ? attributes.replace(/\bintegrity=["'][^"']*["']/i, `integrity="${integrity}"`)
+      : `${attributes} integrity="${integrity}"`;
+    return `<${name}${nextAttributes}>`;
+  });
+  fs.writeFileSync(htmlPath, updated);
 }
 
 async function build() {
@@ -80,6 +107,10 @@ async function build() {
     } else {
       fs.copyFileSync(sourcePath, outputPath);
     }
+  }
+
+  for (const htmlPath of walk(outputDir).filter((filePath) => path.extname(filePath).toLowerCase() === '.html')) {
+    addSubresourceIntegrity(htmlPath);
   }
 
   console.log(`Frontend production build created: ${outputDir}`);
