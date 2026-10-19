@@ -13,13 +13,14 @@ const path = require('path');
 // Storage for request counters and IP jail
 const requestStore = new Map(); // key: `${ip}:${tier}` -> { count, startTime, violations }
 const ipJail = new Map();       // key: ip -> banUntilTimestamp
+ipJail.clear();
 
 // Configuration Options
 const CONFIG = {
   // 1. TIER BẢO VỆ XÁC THỰC & OTP (Ngăn chặn spam mã Gmail & Brute-force mật khẩu)
   AUTH: {
     windowMs: 60 * 1000,    // 1 phút
-    max: 5,                 // Tối đa 5 requests / phút cho xác thực
+    max: 30,                // Tối đa 30 requests / phút cho xác thực
     name: 'AUTH_PROTECTION'
   },
 
@@ -40,12 +41,17 @@ const CONFIG = {
   // 4. CẤU HÌNH TẠM GIAM IP (IP JAIL)
   JAIL: {
     maxViolations: 1,       // Ban ngay khi vượt ngưỡng
-    durationMs: 5 * 60 * 1000 // Tạm cấm 5 phút
+    durationMs: 60 * 1000   // Tạm cấm 60 giây
   }
 };
 
 // Hàm trích xuất IP chính xác qua các tầng Proxy / Cloudflare / Nginx
 function getClientIp(req) {
+  const forwardedFor = req.headers?.['x-forwarded-for'];
+  if (typeof forwardedFor === 'string') {
+    const clientIp = forwardedFor.split(',')[0].trim();
+    if (clientIp) return clientIp;
+  }
   return req.ip || req.socket?.remoteAddress || 'unknown';
 }
 
